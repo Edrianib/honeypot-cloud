@@ -70,11 +70,14 @@ def obtener_ubicacion(ip):
 
 def acortar_link(url_larga):
     try:
-        api_url = f"https://tinyurl.com/api-create.php?url={url_larga}"
+        # Usamos is.gd que se ve más limpio (ej: is.gd/TikTokVid)
+        api_url = f"https://is.gd/create.php?format=simple&url={url_larga}"
         response = requests.get(api_url, timeout=5)
-        if response.status_code == 200: return response.text
+        if response.status_code == 200:
+            return response.text.strip()
         return url_larga
-    except: return url_larga
+    except:
+        return url_larga
 
 # --- NUEVA FUNCIÓN: EL CLONADOR AUTOMÁTICO ---
 def clonar_metadatos(url_destino):
