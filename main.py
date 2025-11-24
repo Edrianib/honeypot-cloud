@@ -1,33 +1,27 @@
 import os
 import random
 import string
+import requests  # Nueva librería para geolocalización
 from flask import Flask, request, jsonify, redirect
-from datetime import datetime
+from datetime import datetime, timedelta
 import psycopg2 
 
 app = Flask(__name__)
 
-# --- CONEXIÓN A LA BASE DE DATOS ---
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def get_db_connection():
-    # Si estamos en local y no hay URL, avisamos (pero no fallamos al importar)
-    if not DATABASE_URL:
-        return None
+    if not DATABASE_URL: return None
     conn = psycopg2.connect(DATABASE_URL)
     return conn
 
-# --- INICIALIZADOR DE TABLAS (MIGRACIÓN AUTOMÁTICA) ---
 def inicializar_db():
     try:
         conn = get_db_connection()
-        if conn is None:
-            print("⚠️ No hay base de datos conectada aún (Localhost).")
-            return
-
+        if conn is None: return
         cur = conn.cursor()
         
-        # Crear Tabla Trampas
+        # Tablas (igual que antes)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS trampas (
                 id SERIAL PRIMARY KEY,
@@ -37,7 +31,7 @@ def inicializar_db():
             );
         """)
         
-        # Crear Tabla Intrusos
+        # Tabla Intrusos (Aseguramos que exista la columna city)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS intrusos (
                 id SERIAL PRIMARY KEY,
@@ -48,23 +42,32 @@ def inicializar_db():
                 captured_at TIMESTAMP DEFAULT NOW()
             );
         """)
-        
         conn.commit()
         cur.close()
         conn.close()
-        print("✅ Base de datos inicializada y tablas listas.")
     except Exception as e:
-        print(f"❌ Error iniciando DB: {e}")
+        print(f"Error DB: {e}")
 
-# --- LÓGICA DEL SISTEMA ---
 def generar_token():
     return ''.join(random.choices(string.ascii_letters + string.digits, k=6))
 
+# --- FUNCIÓN DE RASTREO GEO ---
+def obtener_ubicacion(ip):
+    try:
+        # Consultamos la API de geolocalización
+        response = requests.get(f"http://ip-api.com/json/{ip}")
+        data = response.json()
+        if data['status'] == 'success':
+            return f"{data['city']}, {data['country']}"
+        else:
+            return "Ubicación Desconocida"
+    except:
+        return "Error de Rastreo"
+
 @app.route('/')
 def home():
-    return "<h1>🛡️ HONEYPOT SYSTEM ONLINE</h1><p>Status: Active & Listening...</p>"
+    return "<h1>🛡️ HONEYPOT V2.0 ONLINE</h1><p>Geo-Tracking: Enabled</p>"
 
-# RUTA 1: CREAR TRAMPA
 @app.route('/api/crear_trampa', methods=['POST'])
 def crear_trampa():
     data = request.json
@@ -78,15 +81,21 @@ def crear_trampa():
     cur.close()
     conn.close()
     
-    host_url = request.host_url
-    # Eliminamos el http:// para que se vea más limpio si quieres
-    return jsonify({"status": "ok", "link": f"{host_url}s/{token}"})
+    return jsonify({"status": "ok", "link": f"{request.host_url}s/{token}"})
 
-# RUTA 2: LA TRAMPA (Captura de datos)
 @app.route('/s/<token>')
 def trampa_activada(token):
+    # 1. Obtener IP Real
     ip_victima = request.headers.get('X-Forwarded-For', request.remote_addr)
+    # Si hay varias IPs, tomamos la primera (la real)
+    if ip_victima and ',' in ip_victima:
+        ip_victima = ip_victima.split(',')[0].strip()
+        
     user_agent = request.headers.get('User-Agent')
+    
+    # 2. RASTREO SATELITAL (GEO)
+    ubicacion = obtener_ubicacion(ip_victima)
+    print(f"⚠️ INTRUSO: {ip_victima} desde {ubicacion}")
     
     conn = get_db_connection()
     cur = conn.cursor()
@@ -95,29 +104,28 @@ def trampa_activada(token):
     
     if trampa:
         trampa_id = trampa[0]
-        print(f"⚠️ INTRUSO DETECTADO: {ip_victima}")
+        # Guardamos también la CIUDAD en la base de datos
         cur.execute(
-            "INSERT INTO intrusos (trampa_id, ip_address, user_agent) VALUES (%s, %s, %s)",
-            (trampa_id, ip_victima, user_agent)
+            "INSERT INTO intrusos (trampa_id, ip_address, user_agent, city) VALUES (%s, %s, %s, %s)",
+            (trampa_id, ip_victima, user_agent, ubicacion)
         )
         conn.commit()
     
     cur.close()
     conn.close()
 
-    # Redirección de engaño (Google Error)
     return redirect("https://www.google.com/error?code=404")
 
-# RUTA 3: DASHBOARD (Ver ataques)
 @app.route('/api/ver_ataques', methods=['GET'])
 def ver_ataques():
     conn = get_db_connection()
     cur = conn.cursor()
+    # Ahora pedimos también la columna 'city'
     query = """
-        SELECT t.nombre, i.ip_address, i.captured_at, i.user_agent 
+        SELECT t.nombre, i.ip_address, i.captured_at, i.user_agent, i.city 
         FROM intrusos i
         JOIN trampas t ON i.trampa_id = t.id
-        ORDER BY i.captured_at DESC LIMIT 50
+        ORDER BY i.captured_at DESC LIMIT 20
     """
     cur.execute(query)
     ataques = cur.fetchall()
@@ -126,16 +134,20 @@ def ver_ataques():
     
     resultado = []
     for a in ataques:
+        # CORRECCIÓN HORARIA: Restamos 5 horas para Ecuador
+        hora_utc = a[2]
+        hora_ecuador = hora_utc - timedelta(hours=5)
+        
         resultado.append({
             "trampa": a[0],
             "ip": a[1],
-            "hora": a[2].strftime("%Y-%m-%d %H:%M:%S"),
-            "dispositivo": a[3]
+            "hora": hora_ecuador.strftime("%Y-%m-%d %H:%M:%S"), # Hora corregida
+            "dispositivo": a[3],
+            "ubicacion": a[4] if a[4] else "Desconocida" # Nueva data
         })
         
     return jsonify(resultado)
 
-# EJECUTAR INICIALIZACIÓN AL ARRANCAR
 inicializar_db()
 
 if __name__ == '__main__':
