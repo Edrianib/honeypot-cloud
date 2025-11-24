@@ -2,7 +2,7 @@ import os
 import random
 import string
 import requests  # Nueva librería para geolocalización
-from flask import Flask, request, jsonify, redirect
+from flask import Flask, request, jsonify, redirect, render_template
 from datetime import datetime, timedelta
 import psycopg2 
 
@@ -64,9 +64,11 @@ def obtener_ubicacion(ip):
     except:
         return "Error de Rastreo"
 
+# --- RUTA DE LA APP MÓVIL (DASHBOARD) ---
 @app.route('/')
 def home():
-    return "<h1>🛡️ HONEYPOT V2.0 ONLINE</h1><p>Geo-Tracking: Enabled</p>"
+    # Esto busca el archivo index.html en la carpeta templates
+    return render_template('index.html')
 
 @app.route('/api/crear_trampa', methods=['POST'])
 def crear_trampa():

@@ -35,7 +35,7 @@ def crear_trampa():
     input("\nPresiona Enter para volver...")
 
 def ver_ataques():
-    print("\n--- 🕵️‍♂️  BUSCANDO INTRUSOS ---")
+    print("\n--- 🕵️‍♂️  BUSCANDO INTRUSOS (GEO-ACTIVO) ---")
     try:
         response = requests.get(f"{SERVER_URL}/api/ver_ataques")
         ataques = response.json()
@@ -43,21 +43,24 @@ def ver_ataques():
         if not ataques:
             print("\n   💤 Nadie ha caído en la trampa todavía.")
         else:
-            print(f"\n   🚨 SE HAN DETECTADO {len(ataques)} INTRUSIONES:\n")
-            print(f"   {'HORA':<20} | {'TRAMPA':<15} | {'IP DEL INTRUSO'}")
-            print("   " + "-"*65)
+            print(f"\n   🚨 REGISTRO DE INTRUSIONES:\n")
+            # Encabezados más anchos
+            print(f"   {'HORA (ECU)':<20} | {'IP':<15} | {'UBICACIÓN 🌍'}")
+            print("   " + "-"*70)
             
             for a in ataques:
-                print(f"   {a['hora']:<20} | {a['trampa']:<15} | {a['ip']}")
-                # Detectamos el tipo de dispositivo
-                if "iPhone" in a['dispositivo']:
-                    print(f"   ╚═ 📱 Dispositivo: iPhone")
-                elif "Android" in a['dispositivo']:
-                    print(f"   ╚═ 📱 Dispositivo: Android")
-                elif "Windows" in a['dispositivo']:
-                    print(f"   ╚═ 💻 Dispositivo: Windows PC")
-                else:
-                    print(f"   ╚═ ❓ Dispositivo: {a['dispositivo'][:30]}...")
+                # Imprimimos la nueva info de ubicación
+                ubicacion = a.get('ubicacion', 'Desconocida')
+                print(f"   {a['hora']:<20} | {a['ip']:<15} | {ubicacion}")
+                
+                # Info extra del dispositivo
+                dispo = "Desconocido"
+                if "iPhone" in a['dispositivo']: dispo = "📱 iPhone"
+                elif "Android" in a['dispositivo']: dispo = "📱 Android"
+                elif "Windows" in a['dispositivo']: dispo = "💻 PC Windows"
+                elif "Macintosh" in a['dispositivo']: dispo = "💻 Mac"
+                
+                print(f"   ╚═ {dispo} (Trampa: {a['trampa']})")
                 print("")
                 
     except Exception as e:

