@@ -232,5 +232,22 @@ def ver_ataques():
 
 inicializar_db()
 
+# --- RUTA DE REPARACIÓN DE BASE DE DATOS ---
+@app.route('/reparar_db')
+def reparar_db():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # Forzamos la creación de las columnas que faltan
+        cur.execute("ALTER TABLE trampas ADD COLUMN IF NOT EXISTS meta_titulo TEXT;")
+        cur.execute("ALTER TABLE trampas ADD COLUMN IF NOT EXISTS meta_desc TEXT;")
+        cur.execute("ALTER TABLE trampas ADD COLUMN IF NOT EXISTS meta_img TEXT;")
+        conn.commit()
+        cur.close()
+        conn.close()
+        return "<h1>✅ Base de Datos Reparada con Éxito</h1><p>Intenta crear la trampa ahora.</p>"
+    except Exception as e:
+        return f"<h1>❌ Error: {e}</h1>"
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
