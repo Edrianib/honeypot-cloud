@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ACCESO RESTRINGIDO</title>
+    <style>
+        body { background-color: #0f0f11; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .card { background: #1e1e24; padding: 30px; border-radius: 20px; border: 1px solid #333; text-align: center; width: 80%; max-width: 300px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h2 { margin-top: 0; color: #ff4757; letter-spacing: 1px; font-size: 18px; }
+        input { background: #000; border: 1px solid #333; color: white; padding: 15px; border-radius: 10px; width: 100%; box-sizing: border-box; font-size: 20px; text-align: center; letter-spacing: 5px; outline: none; margin: 20px 0; }
+        input:focus { border-color: #00ff88; }
+        button { background: #00ff88; color: black; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; }
+        .error { color: #ff4757; font-size: 12px; margin-top: 15px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div style="font-size:40px; margin-bottom:10px;">🔒</div>
+        <h2>SISTEMA BLOQUEADO</h2>
+        <p style="color:#888; font-size:12px;">Identifíquese para continuar</p>
+        
+        <input type="password" id="pin" placeholder="PIN" maxlength="6" inputmode="numeric">
+        <button onclick="entrar()">ACCEDER</button>
+        <div id="msg" class="error">PIN INCORRECTO</div>
+    </div>
+
+    <script>
+        async function entrar() {
+            let pin = document.getElementById('pin').value;
+            try {
+                let res = await fetch('/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({pin: pin})
+                });
+                let data = await res.json();
+                
+                if (data.status === 'ok') {
+                    window.location.href = "/"; // Redirigir al Dashboard
+                } else {
+                    document.getElementById('msg').style.display = 'block';
+                    document.getElementById('pin').value = '';
+                }
+            } catch(e) { alert("Error de conexión"); }
+        }
+    </script>
+</body>
+</html>
