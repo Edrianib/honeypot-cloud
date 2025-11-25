@@ -49,19 +49,11 @@
 
     <div id="login-form">
         <div style="margin-bottom:20px; font-size:14px; color:#888;">SECURE ACCESS REQUIRED</div>
-        
         <div class="pin-display" id="display"></div>
-        
         <div class="numpad">
-            <button class="num-btn" onclick="add(1)">1</button>
-            <button class="num-btn" onclick="add(2)">2</button>
-            <button class="num-btn" onclick="add(3)">3</button>
-            <button class="num-btn" onclick="add(4)">4</button>
-            <button class="num-btn" onclick="add(5)">5</button>
-            <button class="num-btn" onclick="add(6)">6</button>
-            <button class="num-btn" onclick="add(7)">7</button>
-            <button class="num-btn" onclick="add(8)">8</button>
-            <button class="num-btn" onclick="add(9)">9</button>
+            <button class="num-btn" onclick="add(1)">1</button><button class="num-btn" onclick="add(2)">2</button><button class="num-btn" onclick="add(3)">3</button>
+            <button class="num-btn" onclick="add(4)">4</button><button class="num-btn" onclick="add(5)">5</button><button class="num-btn" onclick="add(6)">6</button>
+            <button class="num-btn" onclick="add(7)">7</button><button class="num-btn" onclick="add(8)">8</button><button class="num-btn" onclick="add(9)">9</button>
             <button class="action-btn" onclick="clearPin()"><span class="material-icons-round">backspace</span></button>
             <button class="num-btn" onclick="add(0)">0</button>
             <button class="enter-btn" onclick="submit()"><span class="material-icons-round">login</span></button>
@@ -69,7 +61,9 @@
     </div>
 
     <script>
-        // ANIMACIÓN DE ENTRADA
+        // 1. LIMPIAMOS CUALQUIER SESIÓN ANTERIOR AL ENTRAR AQUÍ
+        sessionStorage.removeItem("secure_token");
+
         setTimeout(() => {
             document.getElementById('splash-screen').style.opacity = '0';
             setTimeout(() => {
@@ -80,33 +74,17 @@
                     document.getElementById('login-form').style.transform = 'translateY(0)';
                 }, 50);
             }, 800);
-        }, 2500); // Dura 2.5 segundos la intro
+        }, 2000);
 
-        // LÓGICA DEL PIN
         let pin = "";
         const display = document.getElementById('display');
 
-        function add(num) {
-            if (pin.length < 6) {
-                pin += num;
-                updateDisplay();
-            }
-        }
-
-        function clearPin() {
-            pin = pin.slice(0, -1);
-            updateDisplay();
-        }
-
-        function updateDisplay() {
-            // Mostramos asteriscos para seguridad
-            display.innerText = "*".repeat(pin.length);
-        }
+        function add(num) { if (pin.length < 6) { pin += num; updateDisplay(); } }
+        function clearPin() { pin = pin.slice(0, -1); updateDisplay(); }
+        function updateDisplay() { display.innerText = "*".repeat(pin.length); }
 
         async function submit() {
             if(pin.length === 0) return;
-            
-            // Efecto de carga
             display.style.color = "white";
             
             try {
@@ -119,17 +97,21 @@
                 
                 if (data.status === 'ok') {
                     display.style.color = "#00ff88";
-                    window.location.href = "/"; // Entrar
+                    
+                    // 2. MARCA DE AGUA: GUARDAMOS LA LLAVE TEMPORAL EN RAM
+                    sessionStorage.setItem("secure_token", "GRANTED");
+                    
+                    window.location.href = "/";
                 } else {
-                    display.style.color = "#ff4757";
-                    navigator.vibrate(200); // Vibrar si es posible
-                    setTimeout(() => {
-                        pin = "";
-                        updateDisplay();
-                        display.style.color = "#00ff88";
-                    }, 500);
+                    errorEffect();
                 }
-            } catch(e) { alert("Error de red"); }
+            } catch(e) { errorEffect(); }
+        }
+
+        function errorEffect() {
+            display.style.color = "#ff4757";
+            navigator.vibrate(200);
+            setTimeout(() => { pin = ""; updateDisplay(); display.style.color = "#00ff88"; }, 500);
         }
     </script>
 </body>
