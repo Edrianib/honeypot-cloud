@@ -2,32 +2,113 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ACCESO RESTRINGIDO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>System Access</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <style>
-        body { background-color: #0f0f11; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .card { background: #1e1e24; padding: 30px; border-radius: 20px; border: 1px solid #333; text-align: center; width: 80%; max-width: 300px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        h2 { margin-top: 0; color: #ff4757; letter-spacing: 1px; font-size: 18px; }
-        input { background: #000; border: 1px solid #333; color: white; padding: 15px; border-radius: 10px; width: 100%; box-sizing: border-box; font-size: 20px; text-align: center; letter-spacing: 5px; outline: none; margin: 20px 0; }
-        input:focus { border-color: #00ff88; }
-        button { background: #00ff88; color: black; border: none; padding: 15px; width: 100%; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; }
-        .error { color: #ff4757; font-size: 12px; margin-top: 15px; display: none; }
+        :root { --bg: #000; --accent: #00ff88; --text: #fff; }
+        body { background-color: var(--bg); color: var(--text); font-family: 'Courier New', Courier, monospace; margin: 0; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
+        
+        /* ANIMACIÓN DE INICIO */
+        #splash-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.8s ease; }
+        
+        .logo-container { position: relative; width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; }
+        .logo-ring { position: absolute; width: 100%; height: 100%; border: 2px solid var(--accent); border-radius: 50%; animation: pulse 2s infinite; opacity: 0.5; }
+        .logo-ring:nth-child(2) { width: 70%; height: 70%; animation-delay: 0.5s; }
+        .logo-icon { font-size: 50px; color: var(--accent); text-shadow: 0 0 20px var(--accent); z-index: 2; }
+        
+        @keyframes pulse { 0% { transform: scale(0.8); opacity: 0.1; } 50% { transform: scale(1.1); opacity: 0.8; } 100% { transform: scale(0.8); opacity: 0.1; } }
+        
+        .loading-text { margin-top: 30px; color: var(--accent); font-size: 12px; letter-spacing: 2px; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* FORMULARIO LOGIN */
+        #login-form { opacity: 0; transform: translateY(20px); transition: 1s ease; display: none; width: 80%; max-width: 300px; text-align: center; }
+        
+        .pin-display { background: #111; border: 1px solid #333; padding: 20px; border-radius: 15px; margin-bottom: 20px; font-size: 24px; color: var(--accent); letter-spacing: 10px; min-height: 30px; text-shadow: 0 0 10px rgba(0,255,136,0.5); }
+        
+        .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
+        .num-btn { background: #1e1e24; border: none; color: white; padding: 20px 0; border-radius: 50%; font-size: 20px; font-weight: bold; cursor: pointer; transition: 0.1s; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .num-btn:active { background: var(--accent); color: black; transform: scale(0.9); }
+        .action-btn { background: none; border: none; color: #ff4757; font-size: 24px; display: flex; align-items: center; justify-content: center; }
+        .enter-btn { background: none; border: none; color: var(--accent); font-size: 24px; display: flex; align-items: center; justify-content: center; }
+
     </style>
 </head>
 <body>
-    <div class="card">
-        <div style="font-size:40px; margin-bottom:10px;">🔒</div>
-        <h2>SISTEMA BLOQUEADO</h2>
-        <p style="color:#888; font-size:12px;">Identifíquese para continuar</p>
+
+    <div id="splash-screen">
+        <div class="logo-container">
+            <div class="logo-ring"></div>
+            <div class="logo-ring"></div>
+            <span class="material-icons-round logo-icon">visibility</span>
+        </div>
+        <div class="loading-text">INITIALIZING SYSTEM...</div>
+    </div>
+
+    <div id="login-form">
+        <div style="margin-bottom:20px; font-size:14px; color:#888;">SECURE ACCESS REQUIRED</div>
         
-        <input type="password" id="pin" placeholder="PIN" maxlength="6" inputmode="numeric">
-        <button onclick="entrar()">ACCEDER</button>
-        <div id="msg" class="error">PIN INCORRECTO</div>
+        <div class="pin-display" id="display"></div>
+        
+        <div class="numpad">
+            <button class="num-btn" onclick="add(1)">1</button>
+            <button class="num-btn" onclick="add(2)">2</button>
+            <button class="num-btn" onclick="add(3)">3</button>
+            <button class="num-btn" onclick="add(4)">4</button>
+            <button class="num-btn" onclick="add(5)">5</button>
+            <button class="num-btn" onclick="add(6)">6</button>
+            <button class="num-btn" onclick="add(7)">7</button>
+            <button class="num-btn" onclick="add(8)">8</button>
+            <button class="num-btn" onclick="add(9)">9</button>
+            <button class="action-btn" onclick="clearPin()"><span class="material-icons-round">backspace</span></button>
+            <button class="num-btn" onclick="add(0)">0</button>
+            <button class="enter-btn" onclick="submit()"><span class="material-icons-round">login</span></button>
+        </div>
     </div>
 
     <script>
-        async function entrar() {
-            let pin = document.getElementById('pin').value;
+        // ANIMACIÓN DE ENTRADA
+        setTimeout(() => {
+            document.getElementById('splash-screen').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('splash-screen').style.display = 'none';
+                document.getElementById('login-form').style.display = 'block';
+                setTimeout(() => {
+                    document.getElementById('login-form').style.opacity = '1';
+                    document.getElementById('login-form').style.transform = 'translateY(0)';
+                }, 50);
+            }, 800);
+        }, 2500); // Dura 2.5 segundos la intro
+
+        // LÓGICA DEL PIN
+        let pin = "";
+        const display = document.getElementById('display');
+
+        function add(num) {
+            if (pin.length < 6) {
+                pin += num;
+                updateDisplay();
+            }
+        }
+
+        function clearPin() {
+            pin = pin.slice(0, -1);
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            // Mostramos asteriscos para seguridad
+            display.innerText = "*".repeat(pin.length);
+        }
+
+        async function submit() {
+            if(pin.length === 0) return;
+            
+            // Efecto de carga
+            display.style.color = "white";
+            
             try {
                 let res = await fetch('/login', {
                     method: 'POST',
@@ -37,12 +118,18 @@
                 let data = await res.json();
                 
                 if (data.status === 'ok') {
-                    window.location.href = "/"; // Redirigir al Dashboard
+                    display.style.color = "#00ff88";
+                    window.location.href = "/"; // Entrar
                 } else {
-                    document.getElementById('msg').style.display = 'block';
-                    document.getElementById('pin').value = '';
+                    display.style.color = "#ff4757";
+                    navigator.vibrate(200); // Vibrar si es posible
+                    setTimeout(() => {
+                        pin = "";
+                        updateDisplay();
+                        display.style.color = "#00ff88";
+                    }, 500);
                 }
-            } catch(e) { alert("Error de conexión"); }
+            } catch(e) { alert("Error de red"); }
         }
     </script>
 </body>
